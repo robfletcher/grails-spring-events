@@ -13,7 +13,7 @@ class EventPublisherService implements InitializingBean, DisposableBean {
 	static transactional = false
 
 	ErrorHandler errorHandler
-	
+
 	private final Collection<AsyncEventListener> listeners = []
 	private final ExecutorService executor = Executors.newSingleThreadExecutor()
 	private final ScheduledExecutorService retryExecutor = Executors.newSingleThreadScheduledExecutor()
@@ -56,19 +56,24 @@ class EventPublisherService implements InitializingBean, DisposableBean {
 					rescheduleNotification(listener, event)
 				}
 			} catch (Exception e) {
-				log.error "Notififying listener $listener failed.", e
+				log.error "Notififying listener $listener failed", e
 				errorHandler?.handleError(e)
 			}
 		}
 	}
 
 	private void rescheduleNotification(AsyncEventListener listener, ApplicationEvent event) {
-		int retryCount = event instanceof RetryCountingEventDecorator ? event.retryCount : 0
-		long retryDelay = calculateRetryCount(listener, retryCount)
-		log.warn "Notifying listener $listener failed. Will retry in $retryDelay $MILLISECONDS"
+		log.warn "Notifying listener $listener failed"
 		def originalEvent = event instanceof RetryCountingEventDecorator ? event.originalEvent : event
-		def retryEvent = new RetryCountingEventDecorator(this, originalEvent, retryCount + 1)
-		retryExecutor.schedule(this.&publishEvent.curry(retryEvent), retryDelay, MILLISECONDS)
+		int retryCount = event instanceof RetryCountingEventDecorator ? event.retryCount : 0
+		if (listener.maxRetries == AsyncEventListener.UNLIMITED_RETRIES || retryCount < listener.maxRetries) {
+			long retryDelay = calculateRetryCount(listener, retryCount)
+			log.warn "Will retry in $retryDelay $MILLISECONDS"
+			def retryEvent = new RetryCountingEventDecorator(this, originalEvent, retryCount + 1)
+			retryExecutor.schedule(this.&publishEvent.curry(retryEvent), retryDelay, MILLISECONDS)
+		} else {
+			throw new RetriedTooManyTimesException(retryCount, listener, originalEvent)
+		}
 	}
 
 	private long calculateRetryCount(AsyncEventListener listener, int retryCount) {

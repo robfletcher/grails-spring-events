@@ -2,6 +2,7 @@ package grails.plugin.asyncevents
 
 import grails.test.MockUtils
 import java.util.concurrent.CountDownLatch
+import java.util.concurrent.TimeUnit
 import org.junit.After
 import org.junit.Before
 import org.junit.BeforeClass
@@ -11,26 +12,25 @@ import org.springframework.util.ErrorHandler
 import static java.util.concurrent.TimeUnit.MILLISECONDS
 import static java.util.concurrent.TimeUnit.SECONDS
 import static org.hamcrest.CoreMatchers.*
-import static org.junit.Assert.assertThat
-import static org.junit.Assert.assertTrue
+import static org.junit.Assert.*
 
 class EventPublisherServiceTests {
 
 	static final long RETRY_DELAY_MILLIS = 250
 
 	EventPublisherService service = new EventPublisherService()
+	ApplicationEvent event = new DummyEvent()
 
-	@Test(timeout = 1000L)
+	@Test
 	void shutsDownCleanly() {
 		service.destroy()
 		assertTrue "Worker thread has not stopped", service.executor.awaitTermination(1, SECONDS)
 	}
 
-	@Test(timeout = 1000L)
+	@Test
 	void publishesEventToAllListeners() {
 		int numListeners = 2
 		def latch = new CountDownLatch(numListeners)
-		def event = new DummyEvent()
 
 		numListeners.times {
 			service.addListener new CountingListener(latch)
@@ -38,57 +38,52 @@ class EventPublisherServiceTests {
 
 		service.publishEvent(event)
 
-		latch.await()
+		waitFor "all listeners to be notified", latch
 	}
 
-	@Test(timeout = 1000L)
+	@Test
 	void notifiesListenersOnASeparateThread() {
 		def latch = new CountDownLatch(1)
-		def event = new DummyEvent()
 		def listener = new ThreadRecordingListener(latch)
 
 		service.addListener listener
 
 		service.publishEvent(event)
 
-		latch.await()
-
+		waitFor "all listeners to be notified", latch
 		assertThat "thread used for listener notification", listener.thread, not(sameInstance(Thread.currentThread()))
 	}
 
-	@Test(timeout = 1000L)
+	@Test
 	void notifiesErrorHandlerOfListenerException() {
 		def latch = new CountDownLatch(1)
-		def event = new DummyEvent()
 		def exception = new RuntimeException("Event listener fail")
+		def errorHandler = new ExceptionTrap(latch)
 
-		service.errorHandler = {Throwable t ->
-			assertThat "Exception passed to error handler", t, sameInstance(exception)
-			latch.countDown()
-		} as ErrorHandler
+		service.errorHandler = errorHandler
 		service.addListener({ApplicationEvent e -> throw exception} as AsyncEventListener)
 
 		service.publishEvent(event)
-		latch.await()
+
+		waitFor "error handler to be called", latch
+		assertThat "Exception passed to error handler", errorHandler.handledError, sameInstance(exception)
 	}
 
-	@Test(timeout = 1000L)
+	@Test
 	void survivesListenerException() {
 		def latch = new CountDownLatch(2)
-		def event = new DummyEvent()
 
 		service.addListener new ExceptionThrowingListener(latch)
 		service.addListener new CountingListener(latch)
 
 		service.publishEvent(event)
 
-		latch.await()
+		waitFor "all listeners to be notified", latch
 	}
 
-	@Test(timeout = 1000L)
+	@Test
 	void retriesAfterDelayIfListenerReturnsFalse() {
 		def latch = new CountDownLatch(2)
-		def event = new DummyEvent()
 
 		service.addListener new FailingListener(latch, 1)
 
@@ -98,13 +93,12 @@ class EventPublisherServiceTests {
 		MILLISECONDS.sleep(RETRY_DELAY_MILLIS - 50)
 		assertThat "Number of notifications still expected", latch.count, equalTo(1L)
 
-		latch.await()
+		waitFor "listener to be notified", latch
 	}
 
-	@Test(timeout = 2000L)
+	@Test
 	void retriesBackOffExponentially() {
 		def latch = new CountDownLatch(4)
-		def event = new DummyEvent()
 
 		service.addListener new FailingListener(latch, 3)
 
@@ -122,7 +116,33 @@ class EventPublisherServiceTests {
 		MILLISECONDS.sleep(4 * RETRY_DELAY_MILLIS)
 		assertThat "Number of notifications still expected", latch.count, equalTo(1L)
 
-		latch.await()
+		waitFor "listener to be notified", latch
+	}
+
+	@Test
+	void notifiesErrorHandlerIfRetriedTooManyTimes() {
+		def listenerLatch = new CountDownLatch(2)
+		def errorHandlerLatch = new CountDownLatch(1)
+
+		def listener = new FailingListener(listenerLatch, 2)
+		listener.maxRetries = 1
+		service.addListener listener
+
+		def errorHandler = new ExceptionTrap(errorHandlerLatch)
+		service.errorHandler = errorHandler
+
+		service.publishEvent(event)
+
+		waitFor "listener to be notified", listenerLatch, 2 * RETRY_DELAY_MILLIS, MILLISECONDS
+		waitFor "error handler to be called", errorHandlerLatch
+		assertThat "Exception passed to error handler", errorHandler.handledError, instanceOf(RetriedTooManyTimesException)
+		assertThat "Event attached to exception", errorHandler.handledError.event, sameInstance(event)
+	}
+
+	private void waitFor(String message, CountDownLatch latch, long timeout = RETRY_DELAY_MILLIS, TimeUnit unit = MILLISECONDS) {
+		if (!latch.await(timeout, unit)) {
+			fail "Timed out waiting for $message, expecting $latch.count more calls"
+		}
 	}
 
 	@BeforeClass
@@ -153,6 +173,7 @@ class DummyEvent extends ApplicationEvent {
 class CountingListener implements AsyncEventListener {
 
 	private final CountDownLatch latch
+	int maxRetries = UNLIMITED_RETRIES
 
 	CountingListener(CountDownLatch latch) {
 		this.latch = latch
@@ -220,5 +241,20 @@ class FailingListener extends CountingListener {
 		def fail = failThisManyTimes > 0
 		failThisManyTimes--
 		return fail
+	}
+}
+
+class ExceptionTrap implements ErrorHandler {
+
+	private final CountDownLatch latch
+	Throwable handledError
+
+	ExceptionTrap(CountDownLatch latch) {
+		this.latch = latch
+	}
+
+	void handleError(Throwable t) {
+		handledError = t
+		latch.countDown()
 	}
 }
