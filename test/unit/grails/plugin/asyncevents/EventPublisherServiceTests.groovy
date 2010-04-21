@@ -2,21 +2,24 @@ package grails.plugin.asyncevents
 
 import grails.test.MockUtils
 import java.util.concurrent.CountDownLatch
+import org.gmock.WithGMock
 import org.junit.After
 import org.junit.Before
 import org.junit.BeforeClass
 import org.junit.Test
 import org.springframework.context.ApplicationEvent
+import org.springframework.util.ErrorHandler
 import static java.util.concurrent.TimeUnit.MILLISECONDS
 import static java.util.concurrent.TimeUnit.SECONDS
 import static org.hamcrest.CoreMatchers.*
 import static org.junit.Assert.assertThat
 import static org.junit.Assert.assertTrue
 
+@WithGMock
 class EventPublisherServiceTests {
 
 	static final long RETRY_DELAY_MILLIS = 250
-	
+
 	EventPublisherService service = new EventPublisherService()
 
 	@Test(timeout = 1000L)
@@ -53,6 +56,23 @@ class EventPublisherServiceTests {
 		latch.await()
 
 		assertThat "thread used for listener notification", listener.thread, not(sameInstance(Thread.currentThread()))
+	}
+
+	@Test(timeout = 1500L)
+	void notifiesErrorHandlerOfListenerException() {
+		def latch = new CountDownLatch(1)
+		def event = new MockEvent()
+		def exception = new RuntimeException("Event listener fail")
+
+		service.errorHandler = mock(ErrorHandler) {
+			handleError(exception)
+		}
+		service.addListener new ExceptionThrowingListener(latch, exception)
+
+		play {
+			service.publishEvent(event)
+			latch.await()
+		}
 	}
 
 	@Test(timeout = 1000L)

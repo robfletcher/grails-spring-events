@@ -3,6 +3,7 @@ package grails.plugin.asyncevents
 import org.springframework.beans.factory.DisposableBean
 import org.springframework.beans.factory.InitializingBean
 import org.springframework.context.ApplicationEvent
+import org.springframework.util.ErrorHandler
 import java.util.concurrent.*
 import static java.util.concurrent.TimeUnit.MILLISECONDS
 import static java.util.concurrent.TimeUnit.SECONDS
@@ -11,6 +12,8 @@ class EventPublisherService implements InitializingBean, DisposableBean {
 
 	static transactional = false
 
+	ErrorHandler errorHandler
+	
 	private final Collection<AsyncEventListener> listeners = []
 	private final ExecutorService executor = Executors.newSingleThreadExecutor()
 	private final ScheduledExecutorService retryExecutor = Executors.newSingleThreadScheduledExecutor()
@@ -54,6 +57,7 @@ class EventPublisherService implements InitializingBean, DisposableBean {
 				}
 			} catch (Exception e) {
 				log.error "Notififying listener $listener failed.", e
+				errorHandler?.handleError(e)
 			}
 		}
 	}
