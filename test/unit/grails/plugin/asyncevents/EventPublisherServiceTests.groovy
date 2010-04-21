@@ -7,11 +7,11 @@ import org.junit.Before
 import org.junit.BeforeClass
 import org.junit.Test
 import org.springframework.context.ApplicationEvent
-
+import static java.util.concurrent.TimeUnit.MILLISECONDS
 import static java.util.concurrent.TimeUnit.SECONDS
-import static org.hamcrest.CoreMatchers.not
-import static org.hamcrest.CoreMatchers.sameInstance
-import static org.junit.Assert.*
+import static org.hamcrest.CoreMatchers.*
+import static org.junit.Assert.assertThat
+import static org.junit.Assert.assertTrue
 
 class EventPublisherServiceTests {
 
@@ -24,7 +24,7 @@ class EventPublisherServiceTests {
 		assertTrue "Worker thread has not stopped", service.executor.awaitTermination(1, SECONDS)
 	}
 
-	@Test
+	@Test(timeout = 1000L)
 	void publishesEventToAllListeners() {
 		int numListeners = 2
 		def latch = new CountDownLatch(numListeners)
@@ -36,10 +36,10 @@ class EventPublisherServiceTests {
 
 		service.publishEvent(event)
 
-		waitForAllListenersToBeNotified(latch)
+		latch.await()
 	}
 
-	@Test
+	@Test(timeout = 1000L)
 	void notifiesListenersOnASeparateThread() {
 		def latch = new CountDownLatch(1)
 		def event = new MockEvent()
@@ -49,12 +49,12 @@ class EventPublisherServiceTests {
 
 		service.publishEvent(event)
 
-		waitForAllListenersToBeNotified(latch)
+		latch.await()
 
 		assertThat "thread used for listener notification", listener.thread, not(sameInstance(Thread.currentThread()))
 	}
 
-	@Test
+	@Test(timeout = 1000L)
 	void survivesListenerException() {
 		def latch = new CountDownLatch(2)
 		def event = new MockEvent()
@@ -64,10 +64,10 @@ class EventPublisherServiceTests {
 
 		service.publishEvent(event)
 
-		waitForAllListenersToBeNotified(latch)
+		latch.await()
 	}
 
-	@Test
+	@Test(timeout = 2000L)
 	void retriesAfterDelayIfListenerReturnsFalse() {
 		def latch = new CountDownLatch(2)
 		def event = new MockEvent()
@@ -76,13 +76,11 @@ class EventPublisherServiceTests {
 
 		service.publishEvent(event)
 
-		waitForAllListenersToBeNotified(latch)
-	}
+		// wait for some time after which the retry should not have occurred
+		MILLISECONDS.sleep(750)
+		assertThat "Number of notifications still expected", latch.count, equalTo(1L)
 
-	private void waitForAllListenersToBeNotified(CountDownLatch latch) {
-		if (!latch.await(5, SECONDS)) {
-			fail "Timeout out waiting for event notifications. Still expecting $latch.count notifications"
-		}
+		latch.await()
 	}
 
 	@BeforeClass

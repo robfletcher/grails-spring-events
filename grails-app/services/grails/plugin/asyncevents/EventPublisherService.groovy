@@ -52,7 +52,6 @@ class EventPublisherService implements InitializingBean, DisposableBean {
 				if (!success) {
 					log.warn "Notifying listener $listener failed. Will retry in $listener.retryDelay $MILLISECONDS"
 					retryExecutor.schedule(this.&publishEvent.curry(event), listener.retryDelay, MILLISECONDS)
-					log.info "Event scheduled for re-execution"
 				}
 			} catch (Exception e) {
 				log.error "Notififying listener $listener failed.", e
