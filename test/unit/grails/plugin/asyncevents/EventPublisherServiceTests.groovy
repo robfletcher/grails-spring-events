@@ -7,7 +7,7 @@ import org.junit.Before
 import org.junit.BeforeClass
 import org.junit.Test
 import org.springframework.context.ApplicationEvent
-import org.springframework.context.ApplicationListener
+
 import static java.util.concurrent.TimeUnit.SECONDS
 import static org.hamcrest.CoreMatchers.not
 import static org.hamcrest.CoreMatchers.sameInstance
@@ -59,7 +59,7 @@ class EventPublisherServiceTests {
 		def latch = new CountDownLatch(2)
 		def event = new MockEvent()
 
-		service.addListener new FailingListener(latch)
+		service.addListener new ExceptionThrowingListener(latch)
 		service.addListener new MockListener(latch)
 
 		service.publishEvent(event)
@@ -68,11 +68,11 @@ class EventPublisherServiceTests {
 	}
 
 	@Test
-	void retriesAfterDelayIfListenerThrowsRecoverableException() {
+	void retriesAfterDelayIfListenerReturnsFalse() {
 		def latch = new CountDownLatch(2)
 		def event = new MockEvent()
 
-		service.addListener new FailOnceListener(latch, new RetryLaterException(1, SECONDS))
+		service.addListener new FailingListener(latch, 1)
 
 		service.publishEvent(event)
 
@@ -98,8 +98,6 @@ class EventPublisherServiceTests {
 	@After
 	void stopExecutors() {
 		service.destroy()
-		assert service.executor.awaitTermination(1, SECONDS), "service.executor failed to shut down"
-		assert service.retryExecutor.awaitTermination(1, SECONDS), "service.retryExecutor failed to shut down"
 	}
 
 }
@@ -112,7 +110,7 @@ class MockEvent extends ApplicationEvent {
 	}
 }
 
-class MockListener implements ApplicationListener {
+class MockListener implements AsyncEventListener {
 
 	private final CountDownLatch latch
 
@@ -120,8 +118,13 @@ class MockListener implements ApplicationListener {
 		this.latch = latch
 	}
 
-	void onApplicationEvent(ApplicationEvent e) {
+	boolean onApplicationEvent(ApplicationEvent e) {
 		latch.countDown()
+		return true
+	}
+
+	long getRetryDelay() {
+		return SECONDS.toMillis(1)
 	}
 }
 
@@ -133,52 +136,44 @@ class ThreadRecordingListener extends MockListener {
 		super(latch)
 	}
 
-	void onApplicationEvent(ApplicationEvent e) {
+	boolean onApplicationEvent(ApplicationEvent e) {
 		super.onApplicationEvent(e)
 		thread = Thread.currentThread()
+		return true
+	}
+}
+
+class ExceptionThrowingListener extends MockListener {
+
+	private final Exception exception
+
+	def ExceptionThrowingListener(CountDownLatch latch) {
+		this(latch, new RuntimeException("Event listener fail"))
+	}
+
+	ExceptionThrowingListener(CountDownLatch latch, Exception exception) {
+		super(latch)
+		this.exception = exception
+	}
+
+	boolean onApplicationEvent(ApplicationEvent e) {
+		super.onApplicationEvent(e)
+		throw exception
 	}
 }
 
 class FailingListener extends MockListener {
 
-	private final Exception exception
-
-	def FailingListener(CountDownLatch latch) {
-		this(latch, new RuntimeException("Event listener fail"))
-	}
-
-	FailingListener(CountDownLatch latch, Exception exception) {
-		super(latch)
-		this.exception = exception
-	}
-
-	void onApplicationEvent(ApplicationEvent e) {
-		super.onApplicationEvent(e)
-		if (shouldFail()) {
-			throw exception
-		}
-	}
-
-	boolean shouldFail() {
-		return true
-	}
-
-}
-
-class FailOnceListener extends FailingListener {
-
 	private int failThisManyTimes = 1
 
-	FailOnceListener(CountDownLatch latch) {
+	FailingListener(CountDownLatch latch, int failThisManyTimes) {
 		super(latch)
+		this.failThisManyTimes = failThisManyTimes
 	}
 
-	FailOnceListener(CountDownLatch latch, Exception exception) {
-		super(latch, exception)
-	}
-
-	void onApplicationEvent(ApplicationEvent e) {
+	boolean onApplicationEvent(ApplicationEvent e) {
 		super.onApplicationEvent(e)
+		return !shouldFail()
 	}
 
 	boolean shouldFail() {
@@ -186,6 +181,4 @@ class FailOnceListener extends FailingListener {
 		failThisManyTimes--
 		return fail
 	}
-
-
 }
