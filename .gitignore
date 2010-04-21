@@ -1,3 +1,5 @@
 target
 *.iws
 *.log
+web-app
+out
