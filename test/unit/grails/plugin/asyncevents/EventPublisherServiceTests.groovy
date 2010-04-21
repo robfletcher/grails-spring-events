@@ -15,12 +15,13 @@ import static org.junit.Assert.assertTrue
 
 class EventPublisherServiceTests {
 
+	static final long RETRY_DELAY_MILLIS = 250
+	
 	EventPublisherService service = new EventPublisherService()
 
-	@Test
+	@Test(timeout = 1000L)
 	void shutsDownCleanly() {
 		service.destroy()
-
 		assertTrue "Worker thread has not stopped", service.executor.awaitTermination(1, SECONDS)
 	}
 
@@ -67,7 +68,7 @@ class EventPublisherServiceTests {
 		latch.await()
 	}
 
-	@Test(timeout = 2000L)
+	@Test(timeout = 1000L)
 	void retriesAfterDelayIfListenerReturnsFalse() {
 		def latch = new CountDownLatch(2)
 		def event = new MockEvent()
@@ -77,7 +78,31 @@ class EventPublisherServiceTests {
 		service.publishEvent(event)
 
 		// wait for some time after which the retry should not have occurred
-		MILLISECONDS.sleep(750)
+		MILLISECONDS.sleep(RETRY_DELAY_MILLIS - 50)
+		assertThat "Number of notifications still expected", latch.count, equalTo(1L)
+
+		latch.await()
+	}
+
+	@Test(timeout = 2000L)
+	void retriesBackOffExponentially() {
+		def latch = new CountDownLatch(4)
+		def event = new MockEvent()
+
+		service.addListener new FailingListener(latch, 3)
+
+		service.publishEvent(event)
+
+		// wait for some time after which the first retry should not have occurred
+		MILLISECONDS.sleep(RETRY_DELAY_MILLIS - 50)
+		assertThat "Number of notifications still expected", latch.count, equalTo(3L)
+
+		// wait for some time after which the second retry should not have occurred
+		MILLISECONDS.sleep(2 * RETRY_DELAY_MILLIS)
+		assertThat "Number of notifications still expected", latch.count, equalTo(2L)
+
+		// wait for some time after which the third retry should not have occurred
+		MILLISECONDS.sleep(4 * RETRY_DELAY_MILLIS)
 		assertThat "Number of notifications still expected", latch.count, equalTo(1L)
 
 		latch.await()
@@ -122,7 +147,7 @@ class MockListener implements AsyncEventListener {
 	}
 
 	long getRetryDelay() {
-		return SECONDS.toMillis(1)
+		return EventPublisherServiceTests.RETRY_DELAY_MILLIS
 	}
 }
 

@@ -50,13 +50,29 @@ class EventPublisherService implements InitializingBean, DisposableBean {
 			try {
 				def success = listener.onApplicationEvent(event)
 				if (!success) {
-					log.warn "Notifying listener $listener failed. Will retry in $listener.retryDelay $MILLISECONDS"
-					retryExecutor.schedule(this.&publishEvent.curry(event), listener.retryDelay, MILLISECONDS)
+					rescheduleNotification(listener, event)
 				}
 			} catch (Exception e) {
 				log.error "Notififying listener $listener failed.", e
 			}
 		}
+	}
+
+	private void rescheduleNotification(AsyncEventListener listener, ApplicationEvent event) {
+		int retryCount = event instanceof RetryCountingEventDecorator ? event.retryCount : 0
+		long retryDelay = calculateRetryCount(listener, retryCount)
+		log.warn "Notifying listener $listener failed. Will retry in $retryDelay $MILLISECONDS"
+		def originalEvent = event instanceof RetryCountingEventDecorator ? event.originalEvent : event
+		def retryEvent = new RetryCountingEventDecorator(this, originalEvent, retryCount + 1)
+		retryExecutor.schedule(this.&publishEvent.curry(retryEvent), retryDelay, MILLISECONDS)
+	}
+
+	private long calculateRetryCount(AsyncEventListener listener, int retryCount) {
+		long retryDelay = listener.retryDelay
+		retryCount.times {
+			retryDelay *= 2
+		}
+		return retryDelay
 	}
 
 	private void shutdown(ExecutorService executor, int timeout, TimeUnit unit) {
@@ -66,5 +82,17 @@ class EventPublisherService implements InitializingBean, DisposableBean {
 			executor.shutdownNow()
 			assert executor.awaitTermination(timeout, unit), "Forced shutdown of executor incomplete after $timeout $unit."
 		}
+	}
+}
+
+class RetryCountingEventDecorator extends ApplicationEvent {
+
+	final ApplicationEvent originalEvent
+	final int retryCount
+
+	def RetryCountingEventDecorator(Object source, ApplicationEvent originalEvent, int retryCount) {
+		super(source)
+		this.originalEvent = originalEvent
+		this.retryCount = retryCount
 	}
 }
