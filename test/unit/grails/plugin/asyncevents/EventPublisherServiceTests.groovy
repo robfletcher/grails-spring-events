@@ -2,7 +2,6 @@ package grails.plugin.asyncevents
 
 import grails.test.MockUtils
 import java.util.concurrent.CountDownLatch
-import org.gmock.WithGMock
 import org.junit.After
 import org.junit.Before
 import org.junit.BeforeClass
@@ -15,7 +14,6 @@ import static org.hamcrest.CoreMatchers.*
 import static org.junit.Assert.assertThat
 import static org.junit.Assert.assertTrue
 
-@WithGMock
 class EventPublisherServiceTests {
 
 	static final long RETRY_DELAY_MILLIS = 250
@@ -32,10 +30,10 @@ class EventPublisherServiceTests {
 	void publishesEventToAllListeners() {
 		int numListeners = 2
 		def latch = new CountDownLatch(numListeners)
-		def event = new MockEvent()
+		def event = new DummyEvent()
 
 		numListeners.times {
-			service.addListener new MockListener(latch)
+			service.addListener new CountingListener(latch)
 		}
 
 		service.publishEvent(event)
@@ -46,7 +44,7 @@ class EventPublisherServiceTests {
 	@Test(timeout = 1000L)
 	void notifiesListenersOnASeparateThread() {
 		def latch = new CountDownLatch(1)
-		def event = new MockEvent()
+		def event = new DummyEvent()
 		def listener = new ThreadRecordingListener(latch)
 
 		service.addListener listener
@@ -58,30 +56,29 @@ class EventPublisherServiceTests {
 		assertThat "thread used for listener notification", listener.thread, not(sameInstance(Thread.currentThread()))
 	}
 
-	@Test(timeout = 1500L)
+	@Test(timeout = 1000L)
 	void notifiesErrorHandlerOfListenerException() {
 		def latch = new CountDownLatch(1)
-		def event = new MockEvent()
+		def event = new DummyEvent()
 		def exception = new RuntimeException("Event listener fail")
 
-		service.errorHandler = mock(ErrorHandler) {
-			handleError(exception)
-		}
-		service.addListener new ExceptionThrowingListener(latch, exception)
+		service.errorHandler = {Throwable t ->
+			assertThat "Exception passed to error handler", t, sameInstance(exception)
+			latch.countDown()
+		} as ErrorHandler
+		service.addListener({ApplicationEvent e -> throw exception} as AsyncEventListener)
 
-		play {
-			service.publishEvent(event)
-			latch.await()
-		}
+		service.publishEvent(event)
+		latch.await()
 	}
 
 	@Test(timeout = 1000L)
 	void survivesListenerException() {
 		def latch = new CountDownLatch(2)
-		def event = new MockEvent()
+		def event = new DummyEvent()
 
 		service.addListener new ExceptionThrowingListener(latch)
-		service.addListener new MockListener(latch)
+		service.addListener new CountingListener(latch)
 
 		service.publishEvent(event)
 
@@ -91,7 +88,7 @@ class EventPublisherServiceTests {
 	@Test(timeout = 1000L)
 	void retriesAfterDelayIfListenerReturnsFalse() {
 		def latch = new CountDownLatch(2)
-		def event = new MockEvent()
+		def event = new DummyEvent()
 
 		service.addListener new FailingListener(latch, 1)
 
@@ -107,7 +104,7 @@ class EventPublisherServiceTests {
 	@Test(timeout = 2000L)
 	void retriesBackOffExponentially() {
 		def latch = new CountDownLatch(4)
-		def event = new MockEvent()
+		def event = new DummyEvent()
 
 		service.addListener new FailingListener(latch, 3)
 
@@ -145,19 +142,19 @@ class EventPublisherServiceTests {
 
 }
 
-class MockEvent extends ApplicationEvent {
+class DummyEvent extends ApplicationEvent {
 	static final DUMMY_EVENT_SOURCE = new Object()
 
-	MockEvent() {
+	DummyEvent() {
 		super(DUMMY_EVENT_SOURCE)
 	}
 }
 
-class MockListener implements AsyncEventListener {
+class CountingListener implements AsyncEventListener {
 
 	private final CountDownLatch latch
 
-	MockListener(CountDownLatch latch) {
+	CountingListener(CountDownLatch latch) {
 		this.latch = latch
 	}
 
@@ -171,7 +168,7 @@ class MockListener implements AsyncEventListener {
 	}
 }
 
-class ThreadRecordingListener extends MockListener {
+class ThreadRecordingListener extends CountingListener {
 
 	Thread thread
 
@@ -186,7 +183,7 @@ class ThreadRecordingListener extends MockListener {
 	}
 }
 
-class ExceptionThrowingListener extends MockListener {
+class ExceptionThrowingListener extends CountingListener {
 
 	private final Exception exception
 
@@ -205,7 +202,7 @@ class ExceptionThrowingListener extends MockListener {
 	}
 }
 
-class FailingListener extends MockListener {
+class FailingListener extends CountingListener {
 
 	private int failThisManyTimes = 1
 
