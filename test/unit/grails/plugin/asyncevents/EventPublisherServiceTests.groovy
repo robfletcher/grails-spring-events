@@ -1,8 +1,10 @@
 package grails.plugin.asyncevents
 
+import grails.test.MockUtils
 import java.util.concurrent.CountDownLatch
 import org.junit.After
 import org.junit.Before
+import org.junit.BeforeClass
 import org.junit.Test
 import org.springframework.context.ApplicationEvent
 import org.springframework.context.ApplicationListener
@@ -10,38 +12,16 @@ import static java.util.concurrent.TimeUnit.SECONDS
 import static org.hamcrest.CoreMatchers.not
 import static org.hamcrest.CoreMatchers.sameInstance
 import static org.junit.Assert.*
-import grails.test.MockUtils
 
 class EventPublisherServiceTests {
 
 	EventPublisherService service = new EventPublisherService()
 
-	@Before
-	void setUp() {
-		MockUtils.mockLogging EventPublisherService, true
-		service.afterPropertiesSet()
-	}
-
-	@After
-	void tearDown() {
-		service.destroy()
-		if (!service.executor.isTerminated()) {
-			println "forcing executor to shut down"
-			service.executor.shutdownNow()
-			assert service.executor.awaitTermination(1, SECONDS)
-		}
-		if (!service.retryExecutor.isTerminated()) {
-			println "forcing retry executor to shut down"
-			service.retryExecutor.shutdownNow()
-			assert service.retryExecutor.awaitTermination(1, SECONDS)
-		}
-	}
-
 	@Test
 	void shutsDownCleanly() {
 		service.destroy()
 
-		assertTrue "Worker thread has not stopped after 5 seconds", service.executor.awaitTermination(5, SECONDS)
+		assertTrue "Worker thread has not stopped", service.executor.awaitTermination(1, SECONDS)
 	}
 
 	@Test
@@ -103,6 +83,23 @@ class EventPublisherServiceTests {
 		if (!latch.await(5, SECONDS)) {
 			fail "Timeout out waiting for event notifications. Still expecting $latch.count notifications"
 		}
+	}
+
+	@BeforeClass
+	static void enableLogging() {
+		MockUtils.mockLogging EventPublisherService, true
+	}
+
+	@Before
+	void initialiseService() {
+		service.afterPropertiesSet()
+	}
+
+	@After
+	void stopExecutors() {
+		service.destroy()
+		assert service.executor.awaitTermination(1, SECONDS), "service.executor failed to shut down"
+		assert service.retryExecutor.awaitTermination(1, SECONDS), "service.retryExecutor failed to shut down"
 	}
 
 }

@@ -1,16 +1,11 @@
 package grails.plugin.asyncevents
 
-import java.util.concurrent.BlockingQueue
-import java.util.concurrent.Executors
-import java.util.concurrent.LinkedBlockingQueue
-import java.util.concurrent.ScheduledExecutorService
-import org.slf4j.LoggerFactory
 import org.springframework.beans.factory.DisposableBean
 import org.springframework.beans.factory.InitializingBean
 import org.springframework.context.ApplicationEvent
 import org.springframework.context.ApplicationListener
-import static java.util.concurrent.TimeUnit.SECONDS
-import java.util.concurrent.ExecutorService
+import java.util.concurrent.*
+import static java.util.concurrent.TimeUnit.MILLISECONDS
 
 class EventPublisherService implements InitializingBean, DisposableBean {
 
@@ -34,13 +29,13 @@ class EventPublisherService implements InitializingBean, DisposableBean {
 		executor.execute {
 			while (!done) {
 				log.debug "polling queue..."
-				ApplicationEvent event = queue.poll(1, SECONDS)
+				ApplicationEvent event = queue.poll(250, MILLISECONDS)
 				if (event) {
-					println "got event $event from queue"
+					log.info "got event $event from queue"
 					notifyListeners(event)
 				}
 			}
-			println "event notifier thread exiting..."
+			log.warn "event notifier thread exiting..."
 		}
 	}
 
