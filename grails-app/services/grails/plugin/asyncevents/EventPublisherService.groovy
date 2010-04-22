@@ -112,15 +112,15 @@ class RetryableEvent implements Retryable {
 	}
 
 	long getRetryDelayMillis() {
-		long retryDelay = target.retryDelay
+		long retryDelay = target.retryPolicy.retryDelay
 		retryCount.times {
-			retryDelay *= target.backoffMultiplier
+			retryDelay *= target.retryPolicy.backoffMultiplier
 		}
 		return retryDelay
 	}
 
 	boolean shouldRetry() {
-		return target.maxRetries == AsyncEventListener.UNLIMITED_RETRIES || retryCount < target.maxRetries
+		return target.retryPolicy.retryIndefinitely() || retryCount < target.retryPolicy.maxRetries
 	}
 
 }

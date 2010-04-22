@@ -9,6 +9,7 @@ import org.junit.BeforeClass
 import org.junit.Test
 import org.springframework.context.ApplicationEvent
 import org.springframework.util.ErrorHandler
+import static grails.plugin.asyncevents.RetryPolicy.getDEFAULT_BACKOFF_MULTIPLIER
 import static java.util.concurrent.TimeUnit.MILLISECONDS
 import static java.util.concurrent.TimeUnit.SECONDS
 import static org.hamcrest.CoreMatchers.*
@@ -17,7 +18,6 @@ import static org.junit.Assert.*
 class EventPublisherServiceTests {
 
 	static final long RETRY_DELAY_MILLIS = 250
-	static final int BACKOFF_MULTIPLIER = 2
 
 	EventPublisherService service = new EventPublisherService()
 	ApplicationEvent event = new DummyEvent()
@@ -101,9 +101,7 @@ class EventPublisherServiceTests {
 	void retriesBackOffAccordingToListenersMultiplier() {
 		def latch = new CountDownLatch(4)
 
-		def listener = new FailingListener(latch, 3)
-		listener.backoffMultiplier = 2
-		service.addListener listener
+		service.addListener new FailingListener(latch, 3)
 
 		service.publishEvent(event)
 
@@ -112,11 +110,11 @@ class EventPublisherServiceTests {
 		assertThat "Number of notifications still expected", latch.count, equalTo(3L)
 
 		// wait for some time after which the second retry should not have occurred
-		MILLISECONDS.sleep(2 * RETRY_DELAY_MILLIS)
+		MILLISECONDS.sleep(DEFAULT_BACKOFF_MULTIPLIER * RETRY_DELAY_MILLIS)
 		assertThat "Number of notifications still expected", latch.count, equalTo(2L)
 
 		// wait for some time after which the third retry should not have occurred
-		MILLISECONDS.sleep(4 * RETRY_DELAY_MILLIS)
+		MILLISECONDS.sleep(2 * DEFAULT_BACKOFF_MULTIPLIER * RETRY_DELAY_MILLIS)
 		assertThat "Number of notifications still expected", latch.count, equalTo(1L)
 
 		waitFor "listener to be notified", latch
@@ -128,7 +126,7 @@ class EventPublisherServiceTests {
 		def errorHandlerLatch = new CountDownLatch(1)
 
 		def listener = new FailingListener(listenerLatch, 2)
-		listener.maxRetries = 1
+		listener.retryPolicy.maxRetries = 1
 		service.addListener listener
 
 		def errorHandler = new ExceptionTrap(errorHandlerLatch)
@@ -136,7 +134,7 @@ class EventPublisherServiceTests {
 
 		service.publishEvent(event)
 
-		waitFor "listener to be notified", listenerLatch, 2 * RETRY_DELAY_MILLIS, MILLISECONDS
+		waitFor "listener to be notified", listenerLatch, DEFAULT_BACKOFF_MULTIPLIER * RETRY_DELAY_MILLIS, MILLISECONDS
 		waitFor "error handler to be called", errorHandlerLatch
 		assertThat "Exception passed to error handler", errorHandler.handledError, instanceOf(RetriedTooManyTimesException)
 		assertThat "Event attached to exception", errorHandler.handledError.event, sameInstance(event)
@@ -176,8 +174,7 @@ class DummyEvent extends ApplicationEvent {
 class CountingListener implements AsyncEventListener {
 
 	private final CountDownLatch latch
-	int maxRetries = UNLIMITED_RETRIES
-	int backoffMultiplier = EventPublisherServiceTests.BACKOFF_MULTIPLIER
+	final RetryPolicy retryPolicy = new RetryPolicy(retryDelay: EventPublisherServiceTests.RETRY_DELAY_MILLIS)
 
 	CountingListener(CountDownLatch latch) {
 		this.latch = latch
@@ -186,10 +183,6 @@ class CountingListener implements AsyncEventListener {
 	boolean onApplicationEvent(ApplicationEvent e) {
 		latch.countDown()
 		return true
-	}
-
-	long getRetryDelay() {
-		return EventPublisherServiceTests.RETRY_DELAY_MILLIS
 	}
 }
 
