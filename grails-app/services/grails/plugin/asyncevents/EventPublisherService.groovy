@@ -17,7 +17,7 @@ class EventPublisherService implements InitializingBean, DisposableBean {
 	private final Collection<AsyncEventListener> listeners = []
 	private final ExecutorService executor = Executors.newSingleThreadExecutor()
 	private final ScheduledExecutorService retryExecutor = Executors.newSingleThreadScheduledExecutor()
-	private final BlockingQueue<ApplicationEvent> queue = new LinkedBlockingQueue<ApplicationEvent>()
+	private final BlockingQueue<RetryableEvent> queue = new LinkedBlockingQueue<RetryableEvent>()
 	private boolean done = false
 
 	void addListener(AsyncEventListener listener) {
@@ -25,17 +25,19 @@ class EventPublisherService implements InitializingBean, DisposableBean {
 	}
 
 	void publishEvent(ApplicationEvent event) {
-		queue.put(event)
+		listeners.each { AsyncEventListener listener ->
+			queue.put(new RetryableEvent(listener, event))
+		}
 	}
 
 	void afterPropertiesSet() {
 		executor.execute {
 			while (!done) {
 				log.debug "polling queue..."
-				ApplicationEvent event = queue.poll(250, MILLISECONDS)
+				RetryableEvent event = queue.poll(250, MILLISECONDS)
 				if (event) {
 					log.info "got event $event from queue"
-					notifyListeners(event)
+					notifyListener(event)
 				}
 			}
 			log.warn "event notifier thread exiting..."
@@ -48,31 +50,27 @@ class EventPublisherService implements InitializingBean, DisposableBean {
 		shutdown(retryExecutor, 1, SECONDS)
 	}
 
-	private void notifyListeners(ApplicationEvent event) {
-		listeners.each {AsyncEventListener listener ->
-			try {
-				def success = listener.onApplicationEvent(event)
-				if (!success) {
-					rescheduleNotification(listener, event)
-				}
-			} catch (Exception e) {
-				log.error "Notififying listener $listener failed", e
-				errorHandler?.handleError(e)
+	private void notifyListener(RetryableEvent event) {
+		try {
+			def success = event.target.onApplicationEvent(event.event)
+			if (!success) {
+				rescheduleNotification(event)
 			}
+		} catch (Exception e) {
+			log.error "Notififying listener $event.target failed", e
+			errorHandler?.handleError(e)
 		}
 	}
 
-	private void rescheduleNotification(AsyncEventListener listener, ApplicationEvent event) {
-		log.warn "Notifying listener $listener failed"
-		def originalEvent = event instanceof RetryCountingEventDecorator ? event.originalEvent : event
-		int retryCount = event instanceof RetryCountingEventDecorator ? event.retryCount : 0
-		if (listener.maxRetries == AsyncEventListener.UNLIMITED_RETRIES || retryCount < listener.maxRetries) {
-			long retryDelay = calculateRetryCount(listener, retryCount)
+	private void rescheduleNotification(RetryableEvent event) {
+		log.warn "Notifying listener $event.target failed"
+		if (event.target.maxRetries == AsyncEventListener.UNLIMITED_RETRIES || event.retryCount < event.target.maxRetries) {
+			long retryDelay = calculateRetryCount(event.target, event.retryCount)
 			log.warn "Will retry in $retryDelay $MILLISECONDS"
-			def retryEvent = new RetryCountingEventDecorator(this, originalEvent, retryCount + 1)
-			retryExecutor.schedule(this.&publishEvent.curry(retryEvent), retryDelay, MILLISECONDS)
+			event.incrementRetryCount()
+			retryExecutor.schedule(this.&notifyListener.curry(event), retryDelay, MILLISECONDS)
 		} else {
-			throw new RetriedTooManyTimesException(retryCount, listener, originalEvent)
+			throw new RetriedTooManyTimesException(event)
 		}
 	}
 
@@ -94,14 +92,29 @@ class EventPublisherService implements InitializingBean, DisposableBean {
 	}
 }
 
-class RetryCountingEventDecorator extends ApplicationEvent {
+class Retryable {
 
-	final ApplicationEvent originalEvent
-	final int retryCount
+	private int retryCount
 
-	def RetryCountingEventDecorator(Object source, ApplicationEvent originalEvent, int retryCount) {
-		super(source)
-		this.originalEvent = originalEvent
-		this.retryCount = retryCount
+	Retryable() {
+		this.retryCount = 0
 	}
+
+	void incrementRetryCount() {
+		retryCount++
+	}
+
+	int getRetryCount() { retryCount }
+}
+
+class RetryableEvent extends Retryable {
+
+	final AsyncEventListener target
+	final ApplicationEvent event
+
+	RetryableEvent(AsyncEventListener target, ApplicationEvent event) {
+		this.target = target
+		this.event = event
+	}
+
 }
