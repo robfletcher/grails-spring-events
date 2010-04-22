@@ -6,6 +6,7 @@ import javax.annotation.PreDestroy
 import org.springframework.context.ApplicationContext
 import org.springframework.context.ApplicationContextAware
 import org.springframework.context.ApplicationEvent
+import org.springframework.scheduling.support.TaskUtils
 import org.springframework.util.ErrorHandler
 import java.util.concurrent.*
 import static java.util.concurrent.TimeUnit.MILLISECONDS
@@ -24,9 +25,10 @@ class EventPublisherService implements ApplicationContextAware {
 
 	static transactional = false
 
-	ExecutorService eventProcessor
-	ScheduledExecutorService retryScheduler
-	ErrorHandler errorHandler
+	ErrorHandler errorHandler = TaskUtils.LOG_AND_SUPPRESS_ERROR_HANDLER
+	ExecutorService eventProcessor = Executors.newSingleThreadExecutor()
+	ScheduledExecutorService retryScheduler = Executors.newSingleThreadScheduledExecutor()
+
 	ApplicationContext applicationContext
 
 	private final Collection<AsyncEventListener> listeners = []
@@ -53,8 +55,6 @@ class EventPublisherService implements ApplicationContextAware {
 
 	@PostConstruct
 	void start() {
-		if (!eventProcessor) eventProcessor = Executors.newSingleThreadExecutor()
-		if (!retryScheduler) retryScheduler = Executors.newSingleThreadScheduledExecutor()
 		eventProcessor.execute {
 			while (!done) {
 				log.debug "polling queue..."
