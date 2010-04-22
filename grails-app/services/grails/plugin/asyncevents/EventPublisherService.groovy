@@ -84,27 +84,18 @@ class EventPublisherService implements InitializingBean, DisposableBean {
 	}
 }
 
-abstract class Retryable {
+interface Retryable {
 
-	private int retryCount
+	void incrementRetryCount()
 
-	Retryable() {
-		this.retryCount = 0
-	}
+	long getRetryDelayMillis()
 
-	void incrementRetryCount() {
-		retryCount++
-	}
-
-	int getRetryCount() { retryCount }
-
-	abstract long getRetryDelayMillis()
-
-	abstract boolean shouldRetry()
+	boolean shouldRetry()
 }
 
-class RetryableEvent extends Retryable {
+class RetryableEvent implements Retryable {
 
+	private int retryCount = 0
 	final AsyncEventListener target
 	final ApplicationEvent event
 
@@ -115,6 +106,10 @@ class RetryableEvent extends Retryable {
 
 	boolean tryNotifyingListener() {
 		return target.onApplicationEvent(event)
+	}
+
+	void incrementRetryCount() {
+		retryCount++
 	}
 
 	long getRetryDelayMillis() {
