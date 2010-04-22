@@ -52,7 +52,7 @@ class EventPublisherService implements InitializingBean, DisposableBean {
 
 	private void notifyListener(RetryableEvent event) {
 		try {
-			def success = event.target.onApplicationEvent(event.event)
+			def success = event.tryNotifyingTarget()
 			if (!success) {
 				rescheduleNotification(event)
 			}
@@ -65,21 +65,13 @@ class EventPublisherService implements InitializingBean, DisposableBean {
 	private void rescheduleNotification(RetryableEvent event) {
 		log.warn "Notifying listener $event.target failed"
 		if (event.target.maxRetries == AsyncEventListener.UNLIMITED_RETRIES || event.retryCount < event.target.maxRetries) {
-			long retryDelay = calculateRetryCount(event.target, event.retryCount)
+			long retryDelay = event.retryDelayMillis
 			log.warn "Will retry in $retryDelay $MILLISECONDS"
 			event.incrementRetryCount()
 			retryExecutor.schedule(this.&notifyListener.curry(event), retryDelay, MILLISECONDS)
 		} else {
 			throw new RetriedTooManyTimesException(event)
 		}
-	}
-
-	private long calculateRetryCount(AsyncEventListener listener, int retryCount) {
-		long retryDelay = listener.retryDelay
-		retryCount.times {
-			retryDelay *= 2
-		}
-		return retryDelay
 	}
 
 	private void shutdown(ExecutorService executor, int timeout, TimeUnit unit) {
@@ -92,7 +84,7 @@ class EventPublisherService implements InitializingBean, DisposableBean {
 	}
 }
 
-class Retryable {
+abstract class Retryable {
 
 	private int retryCount
 
@@ -105,6 +97,7 @@ class Retryable {
 	}
 
 	int getRetryCount() { retryCount }
+	abstract long getRetryDelayMillis()
 }
 
 class RetryableEvent extends Retryable {
@@ -115,6 +108,18 @@ class RetryableEvent extends Retryable {
 	RetryableEvent(AsyncEventListener target, ApplicationEvent event) {
 		this.target = target
 		this.event = event
+	}
+
+	boolean tryNotifyingTarget() {
+		return target.onApplicationEvent(event)
+	}
+
+	long getRetryDelayMillis() {
+		long retryDelay = target.retryDelay
+		retryCount.times {
+			retryDelay *= 2
+		}
+		return retryDelay
 	}
 
 }
