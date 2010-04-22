@@ -3,6 +3,7 @@ package grails.plugin.asyncevents
 import grails.test.MockUtils
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
+import org.codehaus.groovy.grails.support.MockApplicationContext
 import org.junit.After
 import org.junit.Before
 import org.junit.BeforeClass
@@ -138,6 +139,23 @@ class EventPublisherServiceTests {
 		waitFor "error handler to be called", errorHandlerLatch
 		assertThat "Exception passed to error handler", errorHandler.handledError, instanceOf(RetriedTooManyTimesException)
 		assertThat "Event attached to exception", errorHandler.handledError.event, sameInstance(event)
+	}
+
+	@Test
+	void autowiresItselfWithListeners() {
+		int numListeners = 3
+		def latch = new CountDownLatch(numListeners)
+
+		def ctx = new MockApplicationContext()
+		(1..numListeners).each {
+			ctx.registerMockBean("listenerBean$it", new CountingListener(latch))
+		}
+		service.applicationContext = ctx
+		service.afterPropertiesSet()
+
+		service.publishEvent(event)
+
+		waitFor "all listeners to be notified", latch
 	}
 
 	private void waitFor(String message, CountDownLatch latch, long timeout = RETRY_DELAY_MILLIS, TimeUnit unit = MILLISECONDS) {
