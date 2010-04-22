@@ -11,23 +11,32 @@ import java.util.concurrent.*
 import static java.util.concurrent.TimeUnit.MILLISECONDS
 import static java.util.concurrent.TimeUnit.SECONDS
 
+/**
+ * A service that asynchronously publishes events to listeners.
+ *
+ * Each listener can signal whether it has successfully handled an event and if not, the policy to use to retry event
+ * notification. Event notification is only retried on normal completion of the listener method, i.e. if the listener
+ * throws any type of exception it will not be notified again about that event.
+ *
+ * @see AsyncEventListener
+ */
 class EventPublisherService implements ApplicationContextAware {
 
 	static transactional = false
 
+	ExecutorService eventProcessor
+	ScheduledExecutorService retryScheduler
 	ErrorHandler errorHandler
 	ApplicationContext applicationContext
 
 	private final Collection<AsyncEventListener> listeners = []
-	private final ExecutorService executor = Executors.newSingleThreadExecutor()
-	private final ScheduledExecutorService retryExecutor = Executors.newSingleThreadScheduledExecutor()
 	private final BlockingQueue<RetryableNotification> queue = new LinkedBlockingQueue<RetryableNotification>()
+
 	private boolean done = false
 
-	void addListener(AsyncEventListener listener) {
-		listeners << listener
-	}
-
+	/**
+	 * Asynchronously publishes an event to all currently registered listeners.
+	 */
 	void publishEvent(ApplicationEvent event) {
 		listeners.each { AsyncEventListener listener ->
 			queue.put(new RetryableNotification(listener, event))
@@ -38,13 +47,15 @@ class EventPublisherService implements ApplicationContextAware {
 	void autowireListeners() {
 		applicationContext.getBeansOfType(AsyncEventListener).each { String name, AsyncEventListener listener ->
 			log.debug "Autowiring listener $name"
-			listeners << listener
+			addListener(listener)
 		}
 	}
 
 	@PostConstruct
-	void startPollingForEvents() {
-		executor.execute {
+	void start() {
+		if (!eventProcessor) eventProcessor = Executors.newSingleThreadExecutor()
+		if (!retryScheduler) retryScheduler = Executors.newSingleThreadScheduledExecutor()
+		eventProcessor.execute {
 			while (!done) {
 				log.debug "polling queue..."
 				RetryableNotification event = queue.poll(250, MILLISECONDS)
@@ -58,10 +69,14 @@ class EventPublisherService implements ApplicationContextAware {
 	}
 
 	@PreDestroy
-	void shutdownExecutors() {
+	void stop() {
 		done = true
-		shutdownExecutor(executor, 1, SECONDS)
-		shutdownExecutor(retryExecutor, 1, SECONDS)
+		shutdownExecutor(eventProcessor, 1, SECONDS)
+		shutdownExecutor(retryScheduler, 1, SECONDS)
+	}
+
+	void addListener(AsyncEventListener listener) {
+		listeners << listener
 	}
 
 	private void notifyListener(RetryableNotification event) {
@@ -82,7 +97,7 @@ class EventPublisherService implements ApplicationContextAware {
 			long retryDelay = event.retryDelayMillis
 			log.warn "Will retry in $retryDelay $MILLISECONDS"
 			event.incrementRetryCount()
-			retryExecutor.schedule(this.&notifyListener.curry(event), retryDelay, MILLISECONDS)
+			retryScheduler.schedule(this.&notifyListener.curry(event), retryDelay, MILLISECONDS)
 		} else {
 			throw new RetriedTooManyTimesException(event)
 		}

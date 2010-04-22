@@ -25,8 +25,9 @@ class EventPublisherServiceTests {
 
 	@Test
 	void shutsDownCleanly() {
-		service.shutdownExecutors()
-		assertTrue "Worker thread has not stopped", service.executor.awaitTermination(1, SECONDS)
+		service.stop()
+		assertTrue "Worker thread has not stopped", service.eventProcessor.awaitTermination(1, SECONDS)
+		assertTrue "Worker thread has not stopped", service.retryScheduler.awaitTermination(1, SECONDS)
 	}
 
 	@Test
@@ -170,13 +171,13 @@ class EventPublisherServiceTests {
 	}
 
 	@Before
-	void initialiseService() {
-		service.startPollingForEvents()
+	void startService() {
+		service.start()
 	}
 
 	@After
-	void stopExecutors() {
-		service.shutdownExecutors()
+	void stopService() {
+		service.stop()
 	}
 
 }
