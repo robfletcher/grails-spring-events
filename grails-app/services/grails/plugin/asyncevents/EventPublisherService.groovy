@@ -52,7 +52,7 @@ class EventPublisherService implements InitializingBean, DisposableBean {
 
 	private void notifyListener(RetryableEvent event) {
 		try {
-			def success = event.tryNotifyingTarget()
+			def success = event.tryNotifyingListener()
 			if (!success) {
 				rescheduleNotification(event)
 			}
@@ -64,7 +64,7 @@ class EventPublisherService implements InitializingBean, DisposableBean {
 
 	private void rescheduleNotification(RetryableEvent event) {
 		log.warn "Notifying listener $event.target failed"
-		if (event.target.maxRetries == AsyncEventListener.UNLIMITED_RETRIES || event.retryCount < event.target.maxRetries) {
+		if (event.shouldRetry()) {
 			long retryDelay = event.retryDelayMillis
 			log.warn "Will retry in $retryDelay $MILLISECONDS"
 			event.incrementRetryCount()
@@ -97,7 +97,10 @@ abstract class Retryable {
 	}
 
 	int getRetryCount() { retryCount }
+
 	abstract long getRetryDelayMillis()
+
+	abstract boolean shouldRetry()
 }
 
 class RetryableEvent extends Retryable {
@@ -110,7 +113,7 @@ class RetryableEvent extends Retryable {
 		this.event = event
 	}
 
-	boolean tryNotifyingTarget() {
+	boolean tryNotifyingListener() {
 		return target.onApplicationEvent(event)
 	}
 
@@ -120,6 +123,10 @@ class RetryableEvent extends Retryable {
 			retryDelay *= 2
 		}
 		return retryDelay
+	}
+
+	boolean shouldRetry() {
+		return target.maxRetries == AsyncEventListener.UNLIMITED_RETRIES || retryCount < target.maxRetries
 	}
 
 }
