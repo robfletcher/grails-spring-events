@@ -1,8 +1,8 @@
 package grails.plugin.asyncevents
 
 import com.energizedwork.grails.plugin.asyncevents.RetryableNotification
-import org.springframework.beans.factory.DisposableBean
-import org.springframework.beans.factory.InitializingBean
+import javax.annotation.PostConstruct
+import javax.annotation.PreDestroy
 import org.springframework.context.ApplicationContext
 import org.springframework.context.ApplicationContextAware
 import org.springframework.context.ApplicationEvent
@@ -11,7 +11,7 @@ import java.util.concurrent.*
 import static java.util.concurrent.TimeUnit.MILLISECONDS
 import static java.util.concurrent.TimeUnit.SECONDS
 
-class EventPublisherService implements InitializingBean, DisposableBean, ApplicationContextAware {
+class EventPublisherService implements ApplicationContextAware {
 
 	static transactional = false
 
@@ -34,18 +34,16 @@ class EventPublisherService implements InitializingBean, DisposableBean, Applica
 		}
 	}
 
-	void afterPropertiesSet() {
-		autowireListeners()
-		startPollingForEvents()
+	@PostConstruct
+	void autowireListeners() {
+		applicationContext.getBeansOfType(AsyncEventListener).each { String name, AsyncEventListener listener ->
+			log.debug "Autowiring listener $name"
+			listeners << listener
+		}
 	}
 
-	void destroy() {
-		done = true
-		shutdown(executor, 1, SECONDS)
-		shutdown(retryExecutor, 1, SECONDS)
-	}
-
-	private void startPollingForEvents() {
+	@PostConstruct
+	void startPollingForEvents() {
 		executor.execute {
 			while (!done) {
 				log.debug "polling queue..."
@@ -57,6 +55,13 @@ class EventPublisherService implements InitializingBean, DisposableBean, Applica
 			}
 			log.warn "event notifier thread exiting..."
 		}
+	}
+
+	@PreDestroy
+	void shutdownExecutors() {
+		done = true
+		shutdownExecutor(executor, 1, SECONDS)
+		shutdownExecutor(retryExecutor, 1, SECONDS)
 	}
 
 	private void notifyListener(RetryableNotification event) {
@@ -83,15 +88,7 @@ class EventPublisherService implements InitializingBean, DisposableBean, Applica
 		}
 	}
 
-	private void autowireListeners() {
-		if (!applicationContext) return
-		applicationContext.getBeansOfType(AsyncEventListener).each { String name, AsyncEventListener listener ->
-			log.debug "Autowiring listener $name"
-			listeners << listener
-		}
-	}
-
-	private void shutdown(ExecutorService executor, int timeout, TimeUnit unit) {
+	private void shutdownExecutor(ExecutorService executor, int timeout, TimeUnit unit) {
 		executor.shutdown()
 		if (!executor.awaitTermination(timeout, unit)) {
 			log.warn "Executor still alive $timeout $unit after shutdown, forcing..."

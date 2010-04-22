@@ -1,6 +1,5 @@
 package grails.plugin.asyncevents
 
-import grails.test.MockUtils
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
 import org.codehaus.groovy.grails.support.MockApplicationContext
@@ -11,6 +10,7 @@ import org.junit.Test
 import org.springframework.context.ApplicationEvent
 import org.springframework.util.ErrorHandler
 import static grails.plugin.asyncevents.RetryPolicy.DEFAULT_BACKOFF_MULTIPLIER
+import static grails.test.MockUtils.mockLogging
 import static java.util.concurrent.TimeUnit.MILLISECONDS
 import static java.util.concurrent.TimeUnit.SECONDS
 import static org.hamcrest.CoreMatchers.*
@@ -20,12 +20,13 @@ class EventPublisherServiceTests {
 
 	static final long RETRY_DELAY_MILLIS = 250
 
+	MockApplicationContext applicationContext = new MockApplicationContext()
 	EventPublisherService service = new EventPublisherService()
 	ApplicationEvent event = new DummyEvent()
 
 	@Test
 	void shutsDownCleanly() {
-		service.destroy()
+		service.shutdownExecutors()
 		assertTrue "Worker thread has not stopped", service.executor.awaitTermination(1, SECONDS)
 	}
 
@@ -151,7 +152,7 @@ class EventPublisherServiceTests {
 			ctx.registerMockBean("listenerBean$it", new CountingListener(latch))
 		}
 		service.applicationContext = ctx
-		service.afterPropertiesSet()
+		service.autowireListeners()
 
 		service.publishEvent(event)
 
@@ -166,17 +167,17 @@ class EventPublisherServiceTests {
 
 	@BeforeClass
 	static void enableLogging() {
-		MockUtils.mockLogging EventPublisherService, true
+		mockLogging EventPublisherService, true
 	}
 
 	@Before
 	void initialiseService() {
-		service.afterPropertiesSet()
+		service.startPollingForEvents()
 	}
 
 	@After
 	void stopExecutors() {
-		service.destroy()
+		service.shutdownExecutors()
 	}
 
 }
