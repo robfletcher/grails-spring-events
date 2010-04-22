@@ -85,7 +85,6 @@ class EventPublisherService implements InitializingBean, DisposableBean {
 }
 
 interface Retryable {
-
 	void incrementRetryCount()
 
 	long getRetryDelayMillis()
@@ -115,7 +114,7 @@ class RetryableEvent implements Retryable {
 	long getRetryDelayMillis() {
 		long retryDelay = target.retryDelay
 		retryCount.times {
-			retryDelay *= 2
+			retryDelay *= target.backoffMultiplier
 		}
 		return retryDelay
 	}

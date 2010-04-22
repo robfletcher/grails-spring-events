@@ -12,4 +12,6 @@ interface AsyncEventListener {
 
 	int getMaxRetries()
 
+	int getBackoffMultiplier()
+
 }

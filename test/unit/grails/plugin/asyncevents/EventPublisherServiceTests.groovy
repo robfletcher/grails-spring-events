@@ -17,6 +17,7 @@ import static org.junit.Assert.*
 class EventPublisherServiceTests {
 
 	static final long RETRY_DELAY_MILLIS = 250
+	static final int BACKOFF_MULTIPLIER = 2
 
 	EventPublisherService service = new EventPublisherService()
 	ApplicationEvent event = new DummyEvent()
@@ -97,10 +98,12 @@ class EventPublisherServiceTests {
 	}
 
 	@Test
-	void retriesBackOffExponentially() {
+	void retriesBackOffAccordingToListenersMultiplier() {
 		def latch = new CountDownLatch(4)
 
-		service.addListener new FailingListener(latch, 3)
+		def listener = new FailingListener(latch, 3)
+		listener.backoffMultiplier = 2
+		service.addListener listener
 
 		service.publishEvent(event)
 
@@ -174,6 +177,7 @@ class CountingListener implements AsyncEventListener {
 
 	private final CountDownLatch latch
 	int maxRetries = UNLIMITED_RETRIES
+	int backoffMultiplier = EventPublisherServiceTests.BACKOFF_MULTIPLIER
 
 	CountingListener(CountDownLatch latch) {
 		this.latch = latch
