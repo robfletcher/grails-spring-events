@@ -20,7 +20,6 @@ class EventPublisherServiceTests {
 
 	static final long RETRY_DELAY_MILLIS = 250
 
-	MockApplicationContext applicationContext = new MockApplicationContext()
 	EventPublisherService service = new EventPublisherService()
 	ApplicationEvent event = new DummyEvent()
 
