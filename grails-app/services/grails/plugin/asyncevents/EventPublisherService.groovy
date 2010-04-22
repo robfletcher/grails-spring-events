@@ -1,5 +1,6 @@
 package grails.plugin.asyncevents
 
+import com.energizedwork.grails.plugin.asyncevents.RetryableNotification
 import org.springframework.beans.factory.DisposableBean
 import org.springframework.beans.factory.InitializingBean
 import org.springframework.context.ApplicationEvent
@@ -17,7 +18,7 @@ class EventPublisherService implements InitializingBean, DisposableBean {
 	private final Collection<AsyncEventListener> listeners = []
 	private final ExecutorService executor = Executors.newSingleThreadExecutor()
 	private final ScheduledExecutorService retryExecutor = Executors.newSingleThreadScheduledExecutor()
-	private final BlockingQueue<RetryableEvent> queue = new LinkedBlockingQueue<RetryableEvent>()
+	private final BlockingQueue<RetryableNotification> queue = new LinkedBlockingQueue<RetryableNotification>()
 	private boolean done = false
 
 	void addListener(AsyncEventListener listener) {
@@ -26,7 +27,7 @@ class EventPublisherService implements InitializingBean, DisposableBean {
 
 	void publishEvent(ApplicationEvent event) {
 		listeners.each { AsyncEventListener listener ->
-			queue.put(new RetryableEvent(listener, event))
+			queue.put(new RetryableNotification(listener, event))
 		}
 	}
 
@@ -34,7 +35,7 @@ class EventPublisherService implements InitializingBean, DisposableBean {
 		executor.execute {
 			while (!done) {
 				log.debug "polling queue..."
-				RetryableEvent event = queue.poll(250, MILLISECONDS)
+				RetryableNotification event = queue.poll(250, MILLISECONDS)
 				if (event) {
 					log.info "got event $event from queue"
 					notifyListener(event)
@@ -50,7 +51,7 @@ class EventPublisherService implements InitializingBean, DisposableBean {
 		shutdown(retryExecutor, 1, SECONDS)
 	}
 
-	private void notifyListener(RetryableEvent event) {
+	private void notifyListener(RetryableNotification event) {
 		try {
 			def success = event.tryNotifyingListener()
 			if (!success) {
@@ -62,7 +63,7 @@ class EventPublisherService implements InitializingBean, DisposableBean {
 		}
 	}
 
-	private void rescheduleNotification(RetryableEvent event) {
+	private void rescheduleNotification(RetryableNotification event) {
 		log.warn "Notifying listener $event.target failed"
 		if (event.shouldRetry()) {
 			long retryDelay = event.retryDelayMillis
@@ -82,45 +83,4 @@ class EventPublisherService implements InitializingBean, DisposableBean {
 			assert executor.awaitTermination(timeout, unit), "Forced shutdown of executor incomplete after $timeout $unit."
 		}
 	}
-}
-
-interface Retryable {
-	void incrementRetryCount()
-
-	long getRetryDelayMillis()
-
-	boolean shouldRetry()
-}
-
-class RetryableEvent implements Retryable {
-
-	private int retryCount = 0
-	final AsyncEventListener target
-	final ApplicationEvent event
-
-	RetryableEvent(AsyncEventListener target, ApplicationEvent event) {
-		this.target = target
-		this.event = event
-	}
-
-	boolean tryNotifyingListener() {
-		return target.onApplicationEvent(event)
-	}
-
-	void incrementRetryCount() {
-		retryCount++
-	}
-
-	long getRetryDelayMillis() {
-		long retryDelay = target.retryPolicy.initialRetryDelayMillis
-		retryCount.times {
-			retryDelay *= target.retryPolicy.backoffMultiplier
-		}
-		return retryDelay
-	}
-
-	boolean shouldRetry() {
-		return target.retryPolicy.retryIndefinitely() || retryCount < target.retryPolicy.maxRetries
-	}
-
 }
