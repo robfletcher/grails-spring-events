@@ -112,7 +112,7 @@ class RetryableEvent implements Retryable {
 	}
 
 	long getRetryDelayMillis() {
-		long retryDelay = target.retryPolicy.retryDelay
+		long retryDelay = target.retryPolicy.initialRetryDelayMillis
 		retryCount.times {
 			retryDelay *= target.retryPolicy.backoffMultiplier
 		}

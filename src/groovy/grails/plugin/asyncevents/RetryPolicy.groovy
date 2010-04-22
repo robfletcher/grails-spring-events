@@ -6,7 +6,7 @@ final class RetryPolicy {
 	static final int DEFAULT_BACKOFF_MULTIPLIER = 2
 
 	int maxRetries = UNLIMITED_RETRIES
-	long retryDelay
+	long initialRetryDelayMillis
 	int backoffMultiplier = DEFAULT_BACKOFF_MULTIPLIER
 
 	boolean retryIndefinitely() {

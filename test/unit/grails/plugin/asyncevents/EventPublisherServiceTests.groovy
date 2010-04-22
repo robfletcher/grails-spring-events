@@ -9,7 +9,7 @@ import org.junit.BeforeClass
 import org.junit.Test
 import org.springframework.context.ApplicationEvent
 import org.springframework.util.ErrorHandler
-import static grails.plugin.asyncevents.RetryPolicy.getDEFAULT_BACKOFF_MULTIPLIER
+import static grails.plugin.asyncevents.RetryPolicy.DEFAULT_BACKOFF_MULTIPLIER
 import static java.util.concurrent.TimeUnit.MILLISECONDS
 import static java.util.concurrent.TimeUnit.SECONDS
 import static org.hamcrest.CoreMatchers.*
@@ -174,7 +174,7 @@ class DummyEvent extends ApplicationEvent {
 class CountingListener implements AsyncEventListener {
 
 	private final CountDownLatch latch
-	final RetryPolicy retryPolicy = new RetryPolicy(retryDelay: EventPublisherServiceTests.RETRY_DELAY_MILLIS)
+	final RetryPolicy retryPolicy = new RetryPolicy(initialRetryDelayMillis: EventPublisherServiceTests.RETRY_DELAY_MILLIS)
 
 	CountingListener(CountDownLatch latch) {
 		this.latch = latch
