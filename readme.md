@@ -31,7 +31,7 @@ The _eventPublisherService_ is aware of any beans in the Spring context that imp
 
 Listeners are notified of events via the `onApplicationEvent(ApplicationEvent)` method. Note that this method returns `boolean` to indicate whether processing of the event was successful or not. Simple implementations may just return `true` but listeners that rely on resources that may be temporarily unavailable can return `false` to indicate that the event notification should be retried later.
 
-#### _Example_ A listener that calls an unreliable external service
+#### _Example_ A listener that calls an unreliable external service:
 
 	class UnreliableListener implements AsyncEventListener {
 		
@@ -64,19 +64,19 @@ The `RetryPolicy` class simply defines the rules governing how and when the _eve
 
 ## Customising the event publisher service
 
-The _eventPublisherService_ has several default dependencies that can be overridden using [property override configuration].
+The _eventPublisherService_ has several default dependencies that can be overridden using [Grails' property override configuration][1] mechanism.
 
 ### Handling notification errors
 
-If a listener throws an exception from its `onApplicationEvent` method or its retry policy's `maxRetries` is exceeded then _eventPublisherService_ will notify its error handler. By default the service simply logs errors but you can override the default error handler by assigning a different [ErrorHandler] implementation to the service in `Config.groovy`:
+If a listener throws an exception from its `onApplicationEvent` method or its retry policy's `maxRetries` is exceeded then _eventPublisherService_ will notify its error handler. By default the service simply logs errors but you can override the default error handler by assigning a different [ErrorHandler][2] implementation to the service in `Config.groovy`:
 
 ### Customising threading policy
 
-Internally the _eventPublisherService_ maintains a queue of pending notifications and uses a [ExecutorService] to poll the queue and notify the target listener. By default the service uses a [newSingleThreadExecutor] but you can use an alternate `ExecutorService` implementation by overriding the property `eventProcessor` in `Config.groovy`.
+Internally the _eventPublisherService_ maintains a queue of pending notifications and uses a [ExecutorService][3] to poll the queue and notify the target listener. By default the service uses a [single thread][4] but you can use an alternate `ExecutorService` implementation by overriding the service's `eventProcessor` property in `Config.groovy`.
 
-Similarly the service uses a [ScheduledExecutorService] to re-queue failed notifications after the delay specified by the listener's retry policy. The default implementation used is a [newSingleThreadScheduledExecutor] which can be overridden by setting the property `retryScheduler` in `Config.groovy`.
+Similarly the service uses a [ScheduledExecutorService][5] to re-queue failed notifications after the delay specified by the listener's retry policy. The default implementation uses a [single thread][6] which can be overridden by setting the property `retryScheduler` in `Config.groovy`.
 
-An example of overriding the dependencies of the service:
+#### _Example_ Overriding the dependencies of the service in `Config.groovy`:
 
 	beans {
 		eventPublisherService {
@@ -86,9 +86,9 @@ An example of overriding the dependencies of the service:
 		}
 	}
 	
-[Property Override Configuration]: http://grails.org/doc/latest/guide/14.%20Grails%20and%20Spring.html#14.6%20Property%20Override%20Configuration
-[ErrorHandler]: http://static.springsource.org/spring/docs/3.0.x/javadoc-api/org/springframework/util/ErrorHandler.html "org.springframework.util.ErrorHandler"
-[ExecutorService]: http://java.sun.com/javase/6/docs/api/java/util/concurrent/ExecutorService.html "java.util.concurrent.ExecutorService"
-[ScheduledExecutorService]: http://java.sun.com/javase/6/docs/api/java/util/concurrent/ScheduledExecutorService.html "java.util.concurrent.ScheduledExecutorService"
-[newSingleThreadExecutor]: http://java.sun.com/javase/6/docs/api/java/util/concurrent/Executors.html#newSingleThreadExecutor() "java.util.concurrent.Executors.newSingleThreadExecutor()"
-[newSingleThreadScheduledExecutor]: http://java.sun.com/javase/6/docs/api/java/util/concurrent/Executors.html#newSingleThreadScheduledExecutor() "java.util.concurrent.Executors.newSingleThreadScheduledExecutor()"
+[1]: http://grails.org/doc/latest/guide/14.%20Grails%20and%20Spring.html#14.6%20Property%20Override%20Configuration
+[2]: http://static.springsource.org/spring/docs/3.0.x/javadoc-api/org/springframework/util/ErrorHandler.html "org.springframework.util.ErrorHandler"
+[3]: http://java.sun.com/javase/6/docs/api/java/util/concurrent/ExecutorService.html "java.util.concurrent.ExecutorService"
+[4]: http://java.sun.com/javase/6/docs/api/java/util/concurrent/Executors.html#newSingleThreadExecutor() "java.util.concurrent.Executors.newSingleThreadExecutor()"
+[5]: http://java.sun.com/javase/6/docs/api/java/util/concurrent/ScheduledExecutorService.html "java.util.concurrent.ScheduledExecutorService"
+[6]: http://java.sun.com/javase/6/docs/api/java/util/concurrent/Executors.html#newSingleThreadScheduledExecutor() "java.util.concurrent.Executors.newSingleThreadScheduledExecutor()"
