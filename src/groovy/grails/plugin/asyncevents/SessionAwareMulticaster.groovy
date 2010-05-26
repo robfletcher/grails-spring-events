@@ -4,6 +4,8 @@ import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
 import java.util.concurrent.ScheduledExecutorService
 import java.util.concurrent.TimeUnit
+import org.hibernate.FlushMode
+import org.hibernate.SessionFactory
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 import org.springframework.beans.factory.BeanFactory
@@ -12,7 +14,10 @@ import org.springframework.beans.factory.InitializingBean
 import org.springframework.context.ApplicationEvent
 import org.springframework.context.ApplicationListener
 import org.springframework.context.event.AbstractApplicationEventMulticaster
+import org.springframework.orm.hibernate3.SessionFactoryUtils
+import org.springframework.orm.hibernate3.SessionHolder
 import org.springframework.scheduling.support.TaskUtils
+import org.springframework.transaction.support.TransactionSynchronizationManager
 import org.springframework.util.ErrorHandler
 import static java.util.concurrent.TimeUnit.MILLISECONDS
 import static java.util.concurrent.TimeUnit.SECONDS
@@ -22,6 +27,7 @@ class SessionAwareMulticaster extends AbstractApplicationEventMulticaster implem
 	ExecutorService taskExecutor
 	ScheduledExecutorService retryScheduler
 	ErrorHandler errorHandler
+	SessionFactory sessionFactory
 
 	private final Logger log = LoggerFactory.getLogger(SessionAwareMulticaster)
 
@@ -35,7 +41,9 @@ class SessionAwareMulticaster extends AbstractApplicationEventMulticaster implem
 		getApplicationListeners(event).each { ApplicationListener listener ->
 			def retryableEvent = new RetryableNotification(listener, event)
 			taskExecutor.execute {
-				notifyListener retryableEvent
+				withHibernateSession {
+					notifyListener retryableEvent
+				}
 			}
 		}
 	}
@@ -49,6 +57,23 @@ class SessionAwareMulticaster extends AbstractApplicationEventMulticaster implem
 			}
 		} catch (e) {
 			errorHandler?.handleError(e)
+		}
+	}
+
+	private void withHibernateSession(Closure closure) {
+		def session = SessionFactoryUtils.getSession(sessionFactory, true)
+		session.flushMode = FlushMode.AUTO
+		TransactionSynchronizationManager.bindResource(sessionFactory, new SessionHolder(session))
+		if (log.isDebugEnabled()) log.debug "Bound session to thread"
+		try {
+			closure()
+		} finally {
+			SessionHolder sessionHolder = TransactionSynchronizationManager.unbindResource(sessionFactory)
+			if (sessionHolder.session.flushMode != FlushMode.MANUAL) {
+				sessionHolder.session.flush()
+			}
+			SessionFactoryUtils.closeSession(sessionHolder.session)
+			if (log.isDebugEnabled()) log.debug "Unbound session"
 		}
 	}
 

@@ -1,4 +1,4 @@
 # To-Do
 
-* wrap listener calls in Hibernate session
 * create an event publisher service
+* exclude stuff from plugin build

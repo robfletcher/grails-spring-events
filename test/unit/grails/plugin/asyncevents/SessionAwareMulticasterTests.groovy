@@ -1,23 +1,24 @@
 package grails.plugin.asyncevents
 
 import java.util.concurrent.CountDownLatch
-import java.util.concurrent.Executors
-import java.util.concurrent.TimeUnit
+import org.codehaus.groovy.grails.plugin.asyncevents.test.DummyEvent
 import org.codehaus.groovy.grails.support.MockApplicationContext
+import org.junit.After
 import org.junit.Before
 import org.junit.BeforeClass
-import org.junit.Ignore
 import org.junit.Test
 import org.springframework.context.ApplicationEvent
 import org.springframework.context.ApplicationListener
-import org.springframework.util.ErrorHandler
+
 import static grails.plugin.asyncevents.RetryPolicy.DEFAULT_BACKOFF_MULTIPLIER
 import static grails.test.MockUtils.mockLogging
 import static java.util.concurrent.TimeUnit.MILLISECONDS
 import static java.util.concurrent.TimeUnit.SECONDS
+import static org.codehaus.groovy.grails.plugin.asyncevents.test.AsynchronousAssertions.waitFor
 import static org.hamcrest.CoreMatchers.*
-import static org.junit.Assert.*
-import org.junit.After
+import static org.junit.Assert.assertThat
+import static org.junit.Assert.assertTrue
+import org.codehaus.groovy.grails.plugin.asyncevents.test.ExceptionTrap
 
 class SessionAwareMulticasterTests {
 
@@ -139,7 +140,7 @@ class SessionAwareMulticasterTests {
 
 		multicaster.multicastEvent(event)
 
-		waitFor "listener to be notified", listenerLatch, DEFAULT_BACKOFF_MULTIPLIER * RETRY_DELAY_MILLIS, MILLISECONDS
+		waitFor "listener to be notified", listenerLatch, DEFAULT_BACKOFF_MULTIPLIER * RETRY_DELAY_MILLIS
 		waitFor "error handler to be called", errorHandlerLatch
 		assertThat "Exception passed to error handler", errorHandler.handledError, instanceOf(RetriedTooManyTimesException)
 		assertThat "Event attached to exception", errorHandler.handledError.event, sameInstance(event)
@@ -161,12 +162,6 @@ class SessionAwareMulticasterTests {
 		waitFor "all listeners to be notified", latch
 	}
 
-	private void waitFor(String message, CountDownLatch latch, long timeout = RETRY_DELAY_MILLIS, TimeUnit unit = MILLISECONDS) {
-		if (!latch.await(timeout, unit)) {
-			fail "Timed out waiting for $message, expecting $latch.count more calls"
-		}
-	}
-
 	@BeforeClass
 	static void enableLogging() {
 		mockLogging SessionAwareMulticaster, true
@@ -182,14 +177,6 @@ class SessionAwareMulticasterTests {
 		multicaster.destroy()
 	}
 
-}
-
-class DummyEvent extends ApplicationEvent {
-	static final DUMMY_EVENT_SOURCE = new Object()
-
-	DummyEvent() {
-		super(DUMMY_EVENT_SOURCE)
-	}
 }
 
 class CountingListener implements RetryableApplicationListener {
@@ -265,20 +252,5 @@ class FailingListener extends CountingListener {
 		def fail = failThisManyTimes > 0
 		failThisManyTimes--
 		return fail
-	}
-}
-
-class ExceptionTrap implements ErrorHandler {
-
-	private final CountDownLatch latch
-	Throwable handledError
-
-	ExceptionTrap(CountDownLatch latch) {
-		this.latch = latch
-	}
-
-	void handleError(Throwable t) {
-		handledError = t
-		latch.countDown()
 	}
 }

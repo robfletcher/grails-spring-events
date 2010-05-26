@@ -21,6 +21,8 @@ Provides asynchronous application event processing for Grails applications
 	def documentation = "http://grails.org/plugin/async-events"
 
 	def doWithSpring = {
-		applicationEventMulticaster(SessionAwareMulticaster)
+		applicationEventMulticaster(SessionAwareMulticaster) {
+			sessionFactory = ref("sessionFactory")
+		}
 	}
 }
