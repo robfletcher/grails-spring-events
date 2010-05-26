@@ -1,21 +1,21 @@
 # Grails Asynchronous Events Plugin
 
-The Grails Asynchronous Events plugin provides a lightweight mechanism for asynchronously publishing and receiving events.
+The Grails Asynchronous Events plugin provides a lightweight mechanism for asynchronously publishing Spring application events.
 
 ## Publishing events
 
-The plugin provides a service called _eventPublisherService_ that is used to publish events asynchronously. The service can be auto-wired into your Grails artefacts just like any other Spring bean. In order to publish an event simply call the method `pubishEvent(ApplicationEvent)` on the service passing the new event object. The method queues the event for notification to all listeners and returns immediately without blocking until the listeners have completed.
+The plugin overrides the default `ApplicationEventMulticaster` with one that processes events asynchronously and is capable of retrying certain types of notification failure. 
 
 #### _Example_ Firing an event when a domain class is updated:
 
 	class Pirate {
 		String name
 		
-		def eventPublisherService
+		def grailsApplication
 		
 		void afterUpdate() {
 			def event = new PirateUpdateEvent(this)
-			eventPublisherService.publishEvent(event)
+			grailsApplication.mainContext.publishEvent(event)
 		}
 	}
 	
@@ -27,44 +27,44 @@ The plugin provides a service called _eventPublisherService_ that is used to pub
 
 ## Defining Listeners
 
-The _eventPublisherService_ is aware of any beans in the Spring context that implement the `grails.plugin.asyncevents.AsyncEventListener` interface. You can register listener beans in `resources.groovy`. Also, remember that Grails services are Spring beans, so simply implementing the interface in a service will automatically register it as a listener.
+Events are dispatched to any beans in the Spring context that implement the `ApplicationListener` interface. You can register listener beans in `resources.groovy`. Also, remember that Grails services are Spring beans, so simply implementing the interface in a service will automatically register it as a listener.
 
-Listeners are notified of events via the `onApplicationEvent(ApplicationEvent)` method. Note that this method returns `boolean` to indicate whether processing of the event was successful or not. Simple implementations may just return `true` but listeners that rely on resources that may be temporarily unavailable can return `false` to indicate that the event notification should be retried later.
+The plugin also provides a sub-interface `RetryableApplicationListener`. An implementation can throw `RetryableFailureException` from its `onApplicationEvent` method to indicate that the notification should be attempted again later. Throwing any other exception type will _not_ result in notification being retried.
 
 #### _Example_ A listener that calls an unreliable external service:
 
-	class UnreliableListener implements AsyncEventListener {
+	class UnreliableListener implements RetryableApplicationListener {
 		
 		def unreliableService
+		final RetryPolicy retryPolicy = new RetryPolicy()
 		
-		boolean onApplicationEvent(ApplicationEvent event) {
+		void onApplicationEvent(ApplicationEvent event) {
 			boolean success = true
 			if (event instanceof AnInterestingEvent) {
 				if (unreliableService.isAvailable()) {
 					unreliableService.doSomething()
 				} else {
-					success = false
+					throw new RetryableFailureException("the service is currently unavailable")
 				}
 			}
-			return success
 		}
 	}
 	
-In this example the listener returns `false` to indicate that the external service it attempts to call is not currently available and notification should be attempted later.
+In this example the listener throws `RetryableFailureException` to indicate that the external service it attempts to call is not currently available and notification should be attempted later.
 
 ## Retrying failed notifications
 
-The listener interface also defines the method `getRetryPolicy()`. If the listener returns `false` from the `onApplicationEvent` method then the _eventPublisherService_ will automatically re-notify the listener at some time in the future according to the retry policy returned by `getRetryPolicy`. The method should return an instance of `grails.plugin.asyncevents.RetryPolicy`.
+The `RetryableApplicationListener` interface also defines the method `getRetryPolicy()`. If the listener throws `RetryableFailureException` from the `onApplicationEvent` method it will be re-notified at some time in the future according to value returned by `getRetryPolicy`. The method should return an instance of `grails.plugin.asyncevents.RetryPolicy`.
 
-The `RetryPolicy` class simply defines the rules governing how and when the _eventPublisherService_ will re-notify the listener of any events it fails to handle. It defines the following properties:
+The `RetryPolicy` class simply defines the rules governing how and when to re-notify the listener of any events it fails to handle. It defines the following properties:
 
-* `maxRetries`: The maximum number of times that the listener will be re-notified of an event. After `maxRetries` is reached an exception is thrown and will be handled as any other exception thrown by the listener would be. A value of `-1` indicates that the listener should be re-notified indefinitely until it successfully processes the event.
-* `initialRetryDelayMillis`: The initial period in milliseconds that the service will wait before re-notifying the listener.
-* `backoffMultiplier`: The multiplier applied to the retry timeout before the second and subsequent retry. For example with a `backoffMultiplier` of `2` and `initialRetryDelayMillis` of `1000` the listener will be re-notified after 1000 milliseconds, 2000 milliseconds, 4000 milliseconds, 8000 milliseconds and so on. A `backoffMultiplier` of `1` would mean the listener will be re-notified at a fixed interval until it successfully handles the event or `maxRetries` is exceeded.
+* `maxRetries`: The maximum number of times that the listener will be re-notified of an event. After `maxRetries` is reached an exception is thrown and will be handled as any other exception thrown by the listener would be. A value of `-1` indicates that the listener should be re-notified indefinitely until it successfully processes the event. Defaults to _3_.
+* `initialRetryDelayMillis`: The initial period in milliseconds that the service will wait before re-notifying the listener. Defaults to 1 minute.
+* `backoffMultiplier`: The multiplier applied to the retry timeout before the second and subsequent retry. For example with a `backoffMultiplier` of `2` and `initialRetryDelayMillis` of `1000` the listener will be re-notified after 1000 milliseconds, 2000 milliseconds, 4000 milliseconds, 8000 milliseconds and so on. A `backoffMultiplier` of `1` would mean the listener will be re-notified at a fixed interval until it successfully handles the event or `maxRetries` is exceeded. Defaults to _2_.
 
-## Customising the event publisher service
+## Customising the multicaster
 
-The _eventPublisherService_ has several default dependencies that can be overridden using [Grails' property override configuration][1] mechanism.
+The multicaster has several default dependencies that can be overridden using [Grails' property override configuration][1] mechanism.
 
 ### Handling notification errors
 
@@ -72,7 +72,7 @@ If a listener throws an exception from its `onApplicationEvent` method or its re
 
 ### Customising threading policy
 
-Internally the _eventPublisherService_ maintains a queue of pending notifications and uses a [ExecutorService][3] to poll the queue and notify the target listener. By default the service uses a [single thread][4] but you can use an alternate `ExecutorService` implementation by overriding the service's `eventProcessor` property in `Config.groovy`.
+The multicaster uses a [ExecutorService][3] to poll the queue and notify the target listener. By default the service uses a [single thread][4] but you can use an alternate `ExecutorService` implementation by overriding the service's `taskExecutor` property in `Config.groovy`.
 
 Similarly the service uses a [ScheduledExecutorService][5] to re-queue failed notifications after the delay specified by the listener's retry policy. The default implementation uses a [single thread][6] which can be overridden by setting the property `retryScheduler` in `Config.groovy`.
 

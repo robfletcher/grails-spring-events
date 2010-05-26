@@ -1,7 +1,6 @@
 package grails.plugin.asyncevents
 
 import org.springframework.context.ApplicationEvent
-import com.energizedwork.grails.plugin.asyncevents.RetryableNotification
 
 class RetriedTooManyTimesException extends RuntimeException {
 
