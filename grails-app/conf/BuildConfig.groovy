@@ -9,5 +9,9 @@ grails.project.dependency.resolution = {
         grailsHome()
     }
     dependencies {
+		test("org.hamcrest:hamcrest-all:1.1") {
+			excludes "junit", "easymock", "jmock"
+			exported = false
+		}
     }
 }
