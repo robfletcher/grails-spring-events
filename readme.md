@@ -2,15 +2,15 @@
 
 The _Grails Spring Events_ plugin provides a lightweight mechanism for asynchronously publishing _Spring_ application events.
 
-The plugin overrides the default [`ApplicationEventMulticaster`][7] with one that processes events asynchronously and is capable of retrying certain types of notification failure. 
+The plugin overrides the default [ApplicationEventMulticaster][7] with one that processes events asynchronously and is capable of retrying certain types of notification failure. 
 
 ## Publishing events
 
-To publish an event you simply need to call the `publishEvent` method on any _Spring_ registered [`ApplicationEventPublisher`][8] implementation. The `ApplicationContext` is the most obvious candidate, although you could also have a service implement the `ApplicationEventPublisher` interface and use that.
+To publish an event you simply need to call the `publishEvent` method on any _Spring_ registered [ApplicationEventPublisher][8] implementation. The `ApplicationContext` is the most obvious candidate, although you could also have a service implement the `ApplicationEventPublisher` interface and use that.
 
 To make things even easier the plugin adds a `publishEvent` method to every domain class, controller and service in the application.
 
-#### _Example_ Firing an event when a domain class is updated:
+#### _Example_: Firing an event when a domain class is updated:
 
 	class Pirate {
 		String name
@@ -29,13 +29,13 @@ To make things even easier the plugin adds a `publishEvent` method to every doma
 
 ## Defining Listeners
 
-Events are dispatched to any beans in the _Spring_ context that implement the [`ApplicationListener`][9] interface. You can register listener beans in `resources.groovy`. Also, remember that _Grails_ services are _Spring_ beans, so simply implementing the interface in a service will automatically register it as a listener.
+Events are dispatched to any beans in the _Spring_ context that implement the [ApplicationListener][9] interface. You can register listener beans in `resources.groovy`. Also, remember that _Grails_ services are _Spring_ beans, so simply implementing the interface in a service will automatically register it as a listener.
 
 ### Filtering the type of event
 
 The `ApplicationListener` interface has a generic type parameter that you can use to filter the types of event that a listener implementation will be notified about. _Spring_ will simply not invoke your listener for other types of event.
 
-#### _Example_ Using generics to filter the event type in a listener
+#### _Example_: Using generics to filter the event type in a listener
 
 	class PirateUpdateResponderService implements ApplicationListener<PirateUpdateEvent> {
 		void onApplicationEvent(PirateUpdateEvent event) {
@@ -55,7 +55,7 @@ The `RetryPolicy` class simply defines the rules governing how and when to re-no
 * `initialRetryDelayMillis`: The initial period in milliseconds that the service will wait before re-notifying the listener. Defaults to 1 minute.
 * `backoffMultiplier`: The multiplier applied to the retry timeout before the second and subsequent retry. For example with a `backoffMultiplier` of _2_ and `initialRetryDelayMillis` of _1000_ the listener will be re-notified after 1000 milliseconds, 2000 milliseconds, 4000 milliseconds, 8000 milliseconds and so on. A `backoffMultiplier` of _1_ would mean the listener will be re-notified at a fixed interval until it successfully handles the event or `maxRetries` is exceeded. Defaults to _2_.
 
-#### _Example_ A listener that calls an unreliable external service:
+#### _Example_: A listener that calls an unreliable external service:
 
 	class UnreliableListener implements ApplicationListener {
 		
@@ -82,15 +82,15 @@ The multicaster has several default dependencies that can be overridden using [G
 
 ### Handling notification errors
 
-If a listener throws an exception from its `onApplicationEvent` method (or its retry policy's `maxRetries` is exceeded) then the multicaster will notify its error handler. The default error handler simply logs errors but you can override it by assigning a different [`ErrorHandler`][2] implementation to the service in `Config.groovy`:
+If a listener throws an exception from its `onApplicationEvent` method (or its retry policy's `maxRetries` is exceeded) then the multicaster will notify its error handler. The default error handler simply logs errors but you can override it by assigning a different [ErrorHandler][2] implementation to the service in `Config.groovy`:
 
 ### Customising threading policy
 
-The multicaster uses a [`ExecutorService`][3] to poll the queue and notify the target listener. By default the service uses a [single thread][4] but you can use an alternate `ExecutorService` implementation by overriding the service's `taskExecutor` property in `Config.groovy`.
+The multicaster uses a [ExecutorService][3] to poll the queue and notify the target listener. By default the service uses a [single thread][4] but you can use an alternate `ExecutorService` implementation by overriding the service's `taskExecutor` property in `Config.groovy`.
 
-Similarly the service uses a [`ScheduledExecutorService`][5] to re-queue failed notifications after the delay specified by the listener's retry policy. The default implementation uses a [single thread][6] which can be overridden by setting the property `retryScheduler` in `Config.groovy`.
+Similarly the service uses a [ScheduledExecutorService][5] to re-queue failed notifications after the delay specified by the listener's retry policy. The default implementation uses a [single thread][6] which can be overridden by setting the property `retryScheduler` in `Config.groovy`.
 
-#### _Example_ Overriding the dependencies of the multicaster in `Config.groovy`:
+#### _Example_: Overriding the dependencies of the multicaster in `Config.groovy`:
 
 	beans {
 		applicationEventMulticaster {
