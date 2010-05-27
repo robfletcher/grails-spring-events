@@ -16,13 +16,14 @@
 package org.codehaus.groovy.grails.plugin.asyncevents
 
 import org.springframework.context.ApplicationEvent
+import grails.plugin.asyncevents.RetryableFailureException
 
 class TooManyRetriesException extends RuntimeException {
 
 	final ApplicationEvent event
 
-	TooManyRetriesException(RetryableNotification retryableEvent) {
-		super("Exceeded maximum retries of $retryableEvent.retryCount when trying to notify listener $retryableEvent.target" as String)
-		this.event = retryableEvent.event
+	TooManyRetriesException(ApplicationEventNotification notification, RetryableFailureException cause) {
+		super("Exceeded maximum retries of $notification.retryCount when trying to notify listener $notification.target" as String, cause)
+		this.event = notification.event
 	}
 }

@@ -29,11 +29,19 @@ The plugin overrides the default [ApplicationEventMulticaster][7] with one that 
 
 Events are dispatched to any beans in the Spring context that implement the `ApplicationListener` interface. You can register listener beans in `resources.groovy`. Also, remember that Grails services are Spring beans, so simply implementing the interface in a service will automatically register it as a listener.
 
-The plugin also provides a sub-interface `grails.plugin.asyncevents.RetryableApplicationListener`. An implementation can throw `grails.plugin.asyncevents.RetryableFailureException` from its `onApplicationEvent` method to indicate that the notification should be attempted again later. Throwing any other exception type will _not_ result in notification being retried.
+## Retrying failed notifications
+
+Listener implementations may declare a `retryPolicy` property of type `grails.plugin.asyncevents.RetryPolicy` (or declare a `getRetryPolicy()` method). If such a property is present and the listener throws `RetryableFailureException` from the `onApplicationEvent` method it will be re-notified at some time in the future according to the `retryPolicy` value. Throwing any other exception type will _not_ result in notification being retried.
+
+The `RetryPolicy` class simply defines the rules governing how and when to re-notify the listener of any events it fails to handle. It defines the following properties:
+
+* `maxRetries`: The maximum number of times that the listener will be re-notified of an event. After `maxRetries` is reached an exception is thrown and will be handled as any other exception thrown by the listener would be. A value of `-1` indicates that the listener should be re-notified indefinitely until it successfully processes the event. Defaults to _3_.
+* `initialRetryDelayMillis`: The initial period in milliseconds that the service will wait before re-notifying the listener. Defaults to 1 minute.
+* `backoffMultiplier`: The multiplier applied to the retry timeout before the second and subsequent retry. For example with a `backoffMultiplier` of `2` and `initialRetryDelayMillis` of `1000` the listener will be re-notified after 1000 milliseconds, 2000 milliseconds, 4000 milliseconds, 8000 milliseconds and so on. A `backoffMultiplier` of `1` would mean the listener will be re-notified at a fixed interval until it successfully handles the event or `maxRetries` is exceeded. Defaults to _2_.
 
 #### _Example_ A listener that calls an unreliable external service:
 
-	class UnreliableListener implements RetryableApplicationListener {
+	class UnreliableListener implements ApplicationListener {
 		
 		def unreliableService
 		final RetryPolicy retryPolicy = new RetryPolicy()
@@ -51,16 +59,6 @@ The plugin also provides a sub-interface `grails.plugin.asyncevents.RetryableApp
 	}
 	
 In this example the listener throws `RetryableFailureException` to indicate that the external service it attempts to call is not currently available and notification should be attempted later.
-
-## Retrying failed notifications
-
-The `RetryableApplicationListener` interface also defines the method `getRetryPolicy()`. If the listener throws `RetryableFailureException` from the `onApplicationEvent` method it will be re-notified at some time in the future according to value returned by `getRetryPolicy`. The method should return an instance of `grails.plugin.asyncevents.RetryPolicy`.
-
-The `RetryPolicy` class simply defines the rules governing how and when to re-notify the listener of any events it fails to handle. It defines the following properties:
-
-* `maxRetries`: The maximum number of times that the listener will be re-notified of an event. After `maxRetries` is reached an exception is thrown and will be handled as any other exception thrown by the listener would be. A value of `-1` indicates that the listener should be re-notified indefinitely until it successfully processes the event. Defaults to _3_.
-* `initialRetryDelayMillis`: The initial period in milliseconds that the service will wait before re-notifying the listener. Defaults to 1 minute.
-* `backoffMultiplier`: The multiplier applied to the retry timeout before the second and subsequent retry. For example with a `backoffMultiplier` of `2` and `initialRetryDelayMillis` of `1000` the listener will be re-notified after 1000 milliseconds, 2000 milliseconds, 4000 milliseconds, 8000 milliseconds and so on. A `backoffMultiplier` of `1` would mean the listener will be re-notified at a fixed interval until it successfully handles the event or `maxRetries` is exceeded. Defaults to _2_.
 
 ## Customising the multicaster
 

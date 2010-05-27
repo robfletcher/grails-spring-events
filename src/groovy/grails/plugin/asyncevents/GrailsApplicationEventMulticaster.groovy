@@ -37,8 +37,9 @@ import org.springframework.transaction.support.TransactionSynchronizationManager
 import org.springframework.util.ErrorHandler
 import static java.util.concurrent.TimeUnit.MILLISECONDS
 import static java.util.concurrent.TimeUnit.SECONDS
-import org.codehaus.groovy.grails.plugin.asyncevents.RetryableNotification
+import org.codehaus.groovy.grails.plugin.asyncevents.ApplicationEventNotification
 import org.codehaus.groovy.grails.plugin.asyncevents.TooManyRetriesException
+import org.codehaus.groovy.grails.plugin.asyncevents.NoRetryPolicyDefinedException
 
 /**
  * An ApplicationEventMulticaster implementation that uses an ExecutorService to asynchronously notify listeners. The
@@ -62,52 +63,59 @@ class GrailsApplicationEventMulticaster extends AbstractApplicationEventMulticas
 
 	void multicastEvent(ApplicationEvent event) {
 		getApplicationListeners(event).each { ApplicationListener listener ->
-			def retryableEvent = new RetryableNotification(listener, event)
+			def notification = new ApplicationEventNotification(listener, event)
 			taskExecutor.execute {
 				withHibernateSession {
-					notifyListener retryableEvent
+					notifyListener notification
 				}
 			}
 		}
 	}
 
-	protected void notifyListener(RetryableNotification event) {
+	protected void notifyListener(ApplicationEventNotification notification) {
 		// TODO: this method has to be protected due to http://jira.codehaus.org/browse/GROOVY-4170
 		try {
-			def success = event.tryNotifyingListener()
-			if (!success) {
-				rescheduleNotification(event)
+			try {
+				notification.notifyListener()
+			} catch (RetryableFailureException e) {
+				rescheduleNotification(notification, e)
 			}
 		} catch (e) {
 			errorHandler?.handleError(e)
 		}
 	}
 
-	private void withHibernateSession(Closure closure) {
-		def session = SessionFactoryUtils.getSession(sessionFactory, true)
-		session.flushMode = FlushMode.AUTO
-		TransactionSynchronizationManager.bindResource(sessionFactory, new SessionHolder(session))
-		if (log.isDebugEnabled()) log.debug "Bound session to thread"
-		try {
-			closure()
-		} finally {
-			SessionHolder sessionHolder = TransactionSynchronizationManager.unbindResource(sessionFactory)
-			if (sessionHolder.session.flushMode != FlushMode.MANUAL) {
-				sessionHolder.session.flush()
-			}
-			SessionFactoryUtils.closeSession(sessionHolder.session)
-			if (log.isDebugEnabled()) log.debug "Unbound session"
+	private void rescheduleNotification(ApplicationEventNotification notification, RetryableFailureException exception) {
+		if (!notification.target.hasProperty("retryPolicy")) {
+			throw new NoRetryPolicyDefinedException(notification, exception)
+		} else if (notification.shouldRetry()) {
+			long retryDelay = notification.retryDelayMillis
+			log.warn "Notifying listener $notification.target failed. Will retry in $retryDelay $MILLISECONDS"
+			notification.incrementRetryCount()
+			retryScheduler.schedule(this.&notifyListener.curry(notification), retryDelay, MILLISECONDS)
+		} else {
+			throw new TooManyRetriesException(notification, exception)
 		}
 	}
 
-	private void rescheduleNotification(RetryableNotification event) {
-		if (event.shouldRetry()) {
-			long retryDelay = event.retryDelayMillis
-			log.warn "Notifying listener $event.target failed. Will retry in $retryDelay $MILLISECONDS"
-			event.incrementRetryCount()
-			retryScheduler.schedule(this.&notifyListener.curry(event), retryDelay, MILLISECONDS)
-		} else {
-			throw new TooManyRetriesException(event)
+	private void withHibernateSession(Closure closure) {
+		if (sessionFactory) {
+			def session = SessionFactoryUtils.getSession(sessionFactory, true)
+			session.flushMode = FlushMode.AUTO
+			TransactionSynchronizationManager.bindResource(sessionFactory, new SessionHolder(session))
+			if (log.isDebugEnabled()) log.debug "Bound session to thread"
+		}
+		try {
+			closure()
+		} finally {
+			if (sessionFactory) {
+				SessionHolder sessionHolder = TransactionSynchronizationManager.unbindResource(sessionFactory)
+				if (sessionHolder.session.flushMode != FlushMode.MANUAL) {
+					sessionHolder.session.flush()
+				}
+				SessionFactoryUtils.closeSession(sessionHolder.session)
+				if (log.isDebugEnabled()) log.debug "Unbound session"
+			}
 		}
 	}
 

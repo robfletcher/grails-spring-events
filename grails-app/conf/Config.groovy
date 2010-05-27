@@ -82,8 +82,7 @@ log4j = {
 
     warn   'org.mortbay.log'
 
-	debug  'grails.app.service.grails.plugin.asyncevents',
-	       'grails.plugin.asyncevents'
+	info  'grails.plugin.asyncevents'
 }
 
 

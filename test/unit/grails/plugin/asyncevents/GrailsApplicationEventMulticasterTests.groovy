@@ -16,9 +16,9 @@
 package grails.plugin.asyncevents
 
 import java.util.concurrent.CountDownLatch
+import org.codehaus.groovy.grails.plugin.asyncevents.TooManyRetriesException
 import org.codehaus.groovy.grails.plugin.asyncevents.test.DummyEvent
 import org.codehaus.groovy.grails.plugin.asyncevents.test.ExceptionTrap
-import org.codehaus.groovy.grails.support.MockApplicationContext
 import org.junit.After
 import org.junit.Before
 import org.junit.BeforeClass
@@ -33,7 +33,7 @@ import static org.codehaus.groovy.grails.plugin.asyncevents.test.AsynchronousAss
 import static org.hamcrest.CoreMatchers.*
 import static org.junit.Assert.assertThat
 import static org.junit.Assert.assertTrue
-import org.codehaus.groovy.grails.plugin.asyncevents.TooManyRetriesException
+import org.codehaus.groovy.grails.plugin.asyncevents.NoRetryPolicyDefinedException
 
 class GrailsApplicationEventMulticasterTests {
 
@@ -162,19 +162,20 @@ class GrailsApplicationEventMulticasterTests {
 	}
 
 	@Test
-	void autowiresItselfWithListeners() {
-		int numListeners = 3
-		def latch = new CountDownLatch(numListeners)
+	void doesNotRetryIfListenerDoesNotDefineRetryPolicy() {
+		def listenerLatch = new CountDownLatch(1)
+		def errorHandlerLatch = new CountDownLatch(1)
 
-		def ctx = new MockApplicationContext()
-		(1..numListeners).each {
-			ctx.registerMockBean("listenerBean$it", new CountingListener(latch))
-		}
-		multicaster.beanFactory = ctx
+		multicaster.addApplicationListener new ExceptionThrowingListener(listenerLatch, new RetryableFailureException())
+
+		def errorHandler = new ExceptionTrap(errorHandlerLatch)
+		multicaster.errorHandler = errorHandler
 
 		multicaster.multicastEvent(event)
 
-		waitFor "all listeners to be notified", latch
+		waitFor "listener to be notified", listenerLatch
+		waitFor "error handler to be called", errorHandlerLatch
+		assertThat "Exception passed to error handler", errorHandler.handledError, instanceOf(NoRetryPolicyDefinedException)
 	}
 
 	@BeforeClass
@@ -194,10 +195,9 @@ class GrailsApplicationEventMulticasterTests {
 
 }
 
-class CountingListener implements RetryableApplicationListener {
+class CountingListener implements ApplicationListener {
 
 	private final CountDownLatch latch
-	final RetryPolicy retryPolicy = new RetryPolicy(initialRetryDelayMillis: GrailsApplicationEventMulticasterTests.RETRY_DELAY_MILLIS)
 
 	CountingListener(CountDownLatch latch) {
 		this.latch = latch
@@ -243,6 +243,7 @@ class ExceptionThrowingListener extends CountingListener {
 
 class FailingListener extends CountingListener {
 
+	final RetryPolicy retryPolicy = new RetryPolicy(initialRetryDelayMillis: GrailsApplicationEventMulticasterTests.RETRY_DELAY_MILLIS)
 	private final Exception exception
 	private int failThisManyTimes = 1
 
