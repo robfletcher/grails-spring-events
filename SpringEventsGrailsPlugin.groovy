@@ -16,7 +16,7 @@
 import grails.plugin.asyncevents.GrailsApplicationEventMulticaster
 import org.springframework.context.ApplicationEvent
 
-class AsyncEventsGrailsPlugin {
+class SpringEventsGrailsPlugin {
 
 	def version = "1.0-SNAPSHOT"
 	def grailsVersion = "1.3.0 > *"
@@ -31,13 +31,13 @@ class AsyncEventsGrailsPlugin {
 
 	def author = "Rob Fletcher"
 	def authorEmail = "rob@energizedwork.com"
-	def title = "Grails Asynchronous Events Plugin"
+	def title = "Grails Spring Events Plugin"
 	def description = '''\\
-Provides asynchronous application event processing for Grails applications
+Provides asynchronous Spring application event processing for Grails applications
 '''
 
 	// URL to the plugin's documentation
-	def documentation = "http://grails.org/plugin/async-events"
+	def documentation = "http://grails.org/plugin/spring-events"
 
 	def doWithSpring = {
 		applicationEventMulticaster(GrailsApplicationEventMulticaster) {

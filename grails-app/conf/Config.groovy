@@ -82,7 +82,7 @@ log4j = {
 
     warn   'org.mortbay.log'
 
-	info  'grails.plugin.asyncevents'
+	info  'grails.plugin.springevents'
 }
 
 

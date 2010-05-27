@@ -29,7 +29,7 @@ class PluginPackagingTests extends AbstractCliTestCase {
 		assertThat "command exit code", waitForProcess(), equalTo(0)
 		verifyHeader()
 
-		def packagedPlugin = new File("grails-async-events-${pluginVersion}.zip")
+		def packagedPlugin = new File("grails-spring-events-${pluginVersion}.zip")
 		assertTrue "plugin zip file", packagedPlugin.isFile()
 
 		def zipFile = new ZipFile(packagedPlugin)
