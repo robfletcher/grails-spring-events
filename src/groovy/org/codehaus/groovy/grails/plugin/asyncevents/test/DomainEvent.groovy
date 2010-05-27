@@ -15,29 +15,36 @@
  */
 package org.codehaus.groovy.grails.plugin.asyncevents.test
 
-class Album {
+import org.springframework.context.ApplicationEvent
 
-	String artist
-	String name
-	List tracks = []
+abstract class DomainEvent extends ApplicationEvent {
 
-	static hasMany = [tracks: Song]
-
-	static constraints = {
-		artist blank: false
-		name blank: false, unique: "artist"
+	DomainEvent(Object source) {
+		super(source)
 	}
 
-	void afterInsert() {
-		publishEvent new InsertEvent(this)
-	}
-
-	void afterUpdate() {
-		publishEvent new UpdateEvent(this)
-	}
-
-	void afterDelete() {
-		publishEvent new DeleteEvent(this)
-	}
 }
 
+class InsertEvent extends DomainEvent {
+
+	InsertEvent(Object source) {
+		super(source)
+	}
+
+}
+
+class UpdateEvent extends DomainEvent {
+
+	UpdateEvent(Object source) {
+		super(source)
+	}
+
+}
+
+class DeleteEvent extends DomainEvent {
+
+	DeleteEvent(Object source) {
+		super(source)
+	}
+
+}

@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 import grails.plugin.asyncevents.GrailsApplicationEventMulticaster
+import org.springframework.context.ApplicationEvent
 
 class AsyncEventsGrailsPlugin {
 
@@ -41,6 +42,14 @@ Provides asynchronous application event processing for Grails applications
 	def doWithSpring = {
 		applicationEventMulticaster(GrailsApplicationEventMulticaster) {
 			sessionFactory = ref("sessionFactory")
+		}
+	}
+
+	def doWithDynamicMethods = {
+		[application.controllerClasses, application.serviceClasses, application.domainClasses].flatten().each {
+			it.metaClass.publishEvent = { ApplicationEvent event ->
+				application.mainContext.publishEvent(event)
+			}
 		}
 	}
 }

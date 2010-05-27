@@ -134,7 +134,7 @@ class DomainEvent extends DummyEvent {
 	Album domainObjectInstance
 }
 
-class ClosureListener implements ApplicationListener {
+class ClosureListener implements ApplicationListener<DummyEvent> {
 
 	private final CountDownLatch latch
 	Closure onEvent
@@ -143,7 +143,7 @@ class ClosureListener implements ApplicationListener {
 		this.latch = new CountDownLatch(1)
 	}
 
-	void onApplicationEvent(ApplicationEvent event) {
+	void onApplicationEvent(DummyEvent event) {
 		onEvent(event)
 		latch.countDown()
 	}
