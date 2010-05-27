@@ -41,6 +41,7 @@ class PluginPackagingTests extends AbstractCliTestCase {
 			assertThat "Plugin zip contents", entryNames, not(hasItem(endsWith(".css")))
 			assertThat "Plugin zip contents", entryNames, not(hasItem(endsWith(".gsp")))
 			assertThat "Plugin zip contents", entryNames, not(hasItem(containsString("/grails/plugin/asyncevents/test/")))
+			assertThat "Plugin zip contents", entryNames, not(hasItem(startsWith("src/templates")))
 		} finally {
 			zipFile.close()
 		}

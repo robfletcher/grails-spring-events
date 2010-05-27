@@ -46,8 +46,6 @@
           <root url="file://$MODULE_DIR$/lib" />
           <root url="jar://$USER_HOME$/.ivy2/cache/org.hamcrest/hamcrest-all/sources/hamcrest-all-1.1-sources.jar!/" />
           <root url="jar://$USER_HOME$/.ivy2/cache/org.hamcrest/hamcrest-all/jars/hamcrest-all-1.1.jar!/" />
-          <root url="jar://$USER_HOME$/.ivy2/cache/jmock/jmock/jars/jmock-1.1.0.jar!/" />
-          <root url="jar://$USER_HOME$/.ivy2/cache/org.easymock/easymock/jars/easymock-2.2.jar!/" />
         </CLASSES>
         <JAVADOC />
         <SOURCES />
