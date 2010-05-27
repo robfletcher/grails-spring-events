@@ -2,20 +2,21 @@
 
 The Grails Asynchronous Events plugin provides a lightweight mechanism for asynchronously publishing Spring application events.
 
+The plugin overrides the default [ApplicationEventMulticaster][7] with one that processes events asynchronously and is capable of retrying certain types of notification failure. 
+
 ## Publishing events
 
-The plugin overrides the default [ApplicationEventMulticaster][7] with one that processes events asynchronously and is capable of retrying certain types of notification failure. 
+To publish an event you simply need to call the `publishEvent` method on any Spring registered [ApplicationEventPublisher][8] implementation. The ApplicationContext is the most obvious candidate, although you could also have a service implement the `ApplicationEventPublisher` interface and use that.
+
+To make things even easier the plugin adds a `publishEvent` method to every domain class, controller and service in the application.
 
 #### _Example_ Firing an event when a domain class is updated:
 
 	class Pirate {
 		String name
 		
-		def grailsApplication
-		
 		void afterUpdate() {
-			def event = new PirateUpdateEvent(this)
-			grailsApplication.mainContext.publishEvent(event)
+			publishEvent(new PirateUpdateEvent(this))
 		}
 	}
 	
@@ -27,7 +28,19 @@ The plugin overrides the default [ApplicationEventMulticaster][7] with one that 
 
 ## Defining Listeners
 
-Events are dispatched to any beans in the Spring context that implement the `ApplicationListener` interface. You can register listener beans in `resources.groovy`. Also, remember that Grails services are Spring beans, so simply implementing the interface in a service will automatically register it as a listener.
+Events are dispatched to any beans in the Spring context that implement the [ApplicationListener][9] interface. You can register listener beans in `resources.groovy`. Also, remember that Grails services are Spring beans, so simply implementing the interface in a service will automatically register it as a listener.
+
+### Filtering the type of event
+
+The `ApplicationListener` interface has a type parameter you can use to filter the types of event that a listener implementation will be notified about. Spring will simply not invoke your listener for other types of event.
+
+#### _Example_ Using generics to filter the event type in a listener
+
+	class PirateUpdateResponderService implements ApplicationListener<PirateUpdateEvent> {
+		void onApplicationEvent(PirateUpdateEvent event) {
+			log.info "Yarrr! The dread pirate $event.source.name has been updated!"
+		}
+	}
 
 ## Retrying failed notifications
 
@@ -90,4 +103,6 @@ Similarly the service uses a [ScheduledExecutorService][5] to re-queue failed no
 [4]: http://java.sun.com/javase/6/docs/api/java/util/concurrent/Executors.html#newSingleThreadExecutor() "java.util.concurrent.Executors.newSingleThreadExecutor()"
 [5]: http://java.sun.com/javase/6/docs/api/java/util/concurrent/ScheduledExecutorService.html "java.util.concurrent.ScheduledExecutorService"
 [6]: http://java.sun.com/javase/6/docs/api/java/util/concurrent/Executors.html#newSingleThreadScheduledExecutor() "java.util.concurrent.Executors.newSingleThreadScheduledExecutor()"
-[7]:
+[7]: http://static.springsource.org/spring/docs/3.0.x/javadoc-api/org/springframework/context/event/ApplicationEventMulticaster.html "org.springframework.context.event.ApplicationEventMulticaster"
+[8]: http://static.springsource.org/spring/docs/3.0.x/javadoc-api/org/springframework/context/ApplicationEventPublisher.html "org.springframework.context.ApplicationEventPublisher"
+[9]: http://static.springsource.org/spring/docs/3.0.x/javadoc-api/org/springframework/context/ApplicationListener.html "org.springframework.context.ApplicationListener"
