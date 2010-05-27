@@ -1,3 +1,19 @@
+/*
+ * Copyright 2010 Robert Fletcher
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 package grails.plugin.asyncevents
 
 import java.util.concurrent.ExecutorService
@@ -21,19 +37,26 @@ import org.springframework.transaction.support.TransactionSynchronizationManager
 import org.springframework.util.ErrorHandler
 import static java.util.concurrent.TimeUnit.MILLISECONDS
 import static java.util.concurrent.TimeUnit.SECONDS
+import org.codehaus.groovy.grails.plugin.asyncevents.RetryableNotification
+import org.codehaus.groovy.grails.plugin.asyncevents.TooManyRetriesException
 
-class SessionAwareMulticaster extends AbstractApplicationEventMulticaster implements InitializingBean, DisposableBean {
+/**
+ * An ApplicationEventMulticaster implementation that uses an ExecutorService to asynchronously notify listeners. The
+ * implementation binds a Hibernate session to the notification thread so that listeners have full access to Grails
+ * domain objects. Notifications can be re-attempted if a listener throws RetryableFailureException. 
+ */
+class GrailsApplicationEventMulticaster extends AbstractApplicationEventMulticaster implements InitializingBean, DisposableBean {
 
 	ExecutorService taskExecutor
 	ScheduledExecutorService retryScheduler
 	ErrorHandler errorHandler
 	SessionFactory sessionFactory
 
-	private final Logger log = LoggerFactory.getLogger(SessionAwareMulticaster)
+	private final Logger log = LoggerFactory.getLogger(GrailsApplicationEventMulticaster)
 
-	SessionAwareMulticaster() { }
+	GrailsApplicationEventMulticaster() { }
 
-	SessionAwareMulticaster(BeanFactory beanFactory) {
+	GrailsApplicationEventMulticaster(BeanFactory beanFactory) {
 		setBeanFactory(beanFactory)
 	}
 
@@ -84,7 +107,7 @@ class SessionAwareMulticaster extends AbstractApplicationEventMulticaster implem
 			event.incrementRetryCount()
 			retryScheduler.schedule(this.&notifyListener.curry(event), retryDelay, MILLISECONDS)
 		} else {
-			throw new RetriedTooManyTimesException(event)
+			throw new TooManyRetriesException(event)
 		}
 	}
 

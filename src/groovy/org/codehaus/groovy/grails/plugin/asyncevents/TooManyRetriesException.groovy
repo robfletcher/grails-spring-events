@@ -13,24 +13,16 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.codehaus.groovy.grails.plugin.asyncevents.test
+package org.codehaus.groovy.grails.plugin.asyncevents
 
-import org.springframework.util.ErrorHandler
-import java.util.concurrent.CountDownLatch
+import org.springframework.context.ApplicationEvent
 
-class ExceptionTrap implements ErrorHandler {
+class TooManyRetriesException extends RuntimeException {
 
-	private final CountDownLatch latch
-	Throwable handledError
+	final ApplicationEvent event
 
-	ExceptionTrap() { }
-
-	ExceptionTrap(CountDownLatch latch) {
-		this.latch = latch
-	}
-
-	void handleError(Throwable t) {
-		handledError = t
-		latch?.countDown()
+	TooManyRetriesException(RetryableNotification retryableEvent) {
+		super("Exceeded maximum retries of $retryableEvent.retryCount when trying to notify listener $retryableEvent.target" as String)
+		this.event = retryableEvent.event
 	}
 }

@@ -1,7 +1,23 @@
+/*
+ * Copyright 2010 Robert Fletcher
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package grails.plugin.asyncevents
 
 import java.util.concurrent.CountDownLatch
 import org.codehaus.groovy.grails.plugin.asyncevents.test.DummyEvent
+import org.codehaus.groovy.grails.plugin.asyncevents.test.ExceptionTrap
 import org.codehaus.groovy.grails.support.MockApplicationContext
 import org.junit.After
 import org.junit.Before
@@ -9,7 +25,6 @@ import org.junit.BeforeClass
 import org.junit.Test
 import org.springframework.context.ApplicationEvent
 import org.springframework.context.ApplicationListener
-
 import static grails.plugin.asyncevents.RetryPolicy.DEFAULT_BACKOFF_MULTIPLIER
 import static grails.test.MockUtils.mockLogging
 import static java.util.concurrent.TimeUnit.MILLISECONDS
@@ -18,13 +33,13 @@ import static org.codehaus.groovy.grails.plugin.asyncevents.test.AsynchronousAss
 import static org.hamcrest.CoreMatchers.*
 import static org.junit.Assert.assertThat
 import static org.junit.Assert.assertTrue
-import org.codehaus.groovy.grails.plugin.asyncevents.test.ExceptionTrap
+import org.codehaus.groovy.grails.plugin.asyncevents.TooManyRetriesException
 
-class SessionAwareMulticasterTests {
+class GrailsApplicationEventMulticasterTests {
 
 	static final long RETRY_DELAY_MILLIS = 250
 
-	SessionAwareMulticaster multicaster = new SessionAwareMulticaster()
+	GrailsApplicationEventMulticaster multicaster = new GrailsApplicationEventMulticaster()
 	ApplicationEvent event = new DummyEvent()
 
 	@Test
@@ -142,7 +157,7 @@ class SessionAwareMulticasterTests {
 
 		waitFor "listener to be notified", listenerLatch, DEFAULT_BACKOFF_MULTIPLIER * RETRY_DELAY_MILLIS
 		waitFor "error handler to be called", errorHandlerLatch
-		assertThat "Exception passed to error handler", errorHandler.handledError, instanceOf(RetriedTooManyTimesException)
+		assertThat "Exception passed to error handler", errorHandler.handledError, instanceOf(TooManyRetriesException)
 		assertThat "Event attached to exception", errorHandler.handledError.event, sameInstance(event)
 	}
 
@@ -164,7 +179,7 @@ class SessionAwareMulticasterTests {
 
 	@BeforeClass
 	static void enableLogging() {
-		mockLogging SessionAwareMulticaster, true
+		mockLogging GrailsApplicationEventMulticaster, true
 	}
 
 	@Before
@@ -182,7 +197,7 @@ class SessionAwareMulticasterTests {
 class CountingListener implements RetryableApplicationListener {
 
 	private final CountDownLatch latch
-	final RetryPolicy retryPolicy = new RetryPolicy(initialRetryDelayMillis: SessionAwareMulticasterTests.RETRY_DELAY_MILLIS)
+	final RetryPolicy retryPolicy = new RetryPolicy(initialRetryDelayMillis: GrailsApplicationEventMulticasterTests.RETRY_DELAY_MILLIS)
 
 	CountingListener(CountDownLatch latch) {
 		this.latch = latch

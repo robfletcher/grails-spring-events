@@ -4,7 +4,7 @@ The Grails Asynchronous Events plugin provides a lightweight mechanism for async
 
 ## Publishing events
 
-The plugin overrides the default `ApplicationEventMulticaster` with one that processes events asynchronously and is capable of retrying certain types of notification failure. 
+The plugin overrides the default [ApplicationEventMulticaster][7] with one that processes events asynchronously and is capable of retrying certain types of notification failure. 
 
 #### _Example_ Firing an event when a domain class is updated:
 
@@ -29,7 +29,7 @@ The plugin overrides the default `ApplicationEventMulticaster` with one that pro
 
 Events are dispatched to any beans in the Spring context that implement the `ApplicationListener` interface. You can register listener beans in `resources.groovy`. Also, remember that Grails services are Spring beans, so simply implementing the interface in a service will automatically register it as a listener.
 
-The plugin also provides a sub-interface `RetryableApplicationListener`. An implementation can throw `RetryableFailureException` from its `onApplicationEvent` method to indicate that the notification should be attempted again later. Throwing any other exception type will _not_ result in notification being retried.
+The plugin also provides a sub-interface `grails.plugin.asyncevents.RetryableApplicationListener`. An implementation can throw `grails.plugin.asyncevents.RetryableFailureException` from its `onApplicationEvent` method to indicate that the notification should be attempted again later. Throwing any other exception type will _not_ result in notification being retried.
 
 #### _Example_ A listener that calls an unreliable external service:
 
@@ -68,7 +68,7 @@ The multicaster has several default dependencies that can be overridden using [G
 
 ### Handling notification errors
 
-If a listener throws an exception from its `onApplicationEvent` method or its retry policy's `maxRetries` is exceeded then _eventPublisherService_ will notify its error handler. By default the service simply logs errors but you can override the default error handler by assigning a different [ErrorHandler][2] implementation to the service in `Config.groovy`:
+If a listener throws an exception from its `onApplicationEvent` method (or its retry policy's `maxRetries` is exceeded) then the multicaster will notify its error handler. The default error handler simply logs errors but you can override it by assigning a different [ErrorHandler][2] implementation to the service in `Config.groovy`:
 
 ### Customising threading policy
 
@@ -76,10 +76,10 @@ The multicaster uses a [ExecutorService][3] to poll the queue and notify the tar
 
 Similarly the service uses a [ScheduledExecutorService][5] to re-queue failed notifications after the delay specified by the listener's retry policy. The default implementation uses a [single thread][6] which can be overridden by setting the property `retryScheduler` in `Config.groovy`.
 
-#### _Example_ Overriding the dependencies of the service in `Config.groovy`:
+#### _Example_ Overriding the dependencies of the multicaster in `Config.groovy`:
 
 	beans {
-		eventPublisherService {
+		applicationEventMulticaster {
 			errorHandler = new SomeErrorHandlerImpl()
 			eventProcessor = java.util.concurrent.Executors.newCachedThreadPool()
 			retryScheduler = java.util.concurrent.Executors.newScheduledThreadPool(5)
@@ -92,3 +92,4 @@ Similarly the service uses a [ScheduledExecutorService][5] to re-queue failed no
 [4]: http://java.sun.com/javase/6/docs/api/java/util/concurrent/Executors.html#newSingleThreadExecutor() "java.util.concurrent.Executors.newSingleThreadExecutor()"
 [5]: http://java.sun.com/javase/6/docs/api/java/util/concurrent/ScheduledExecutorService.html "java.util.concurrent.ScheduledExecutorService"
 [6]: http://java.sun.com/javase/6/docs/api/java/util/concurrent/Executors.html#newSingleThreadScheduledExecutor() "java.util.concurrent.Executors.newSingleThreadScheduledExecutor()"
+[7]:
