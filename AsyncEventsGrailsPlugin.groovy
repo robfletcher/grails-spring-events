@@ -21,7 +21,11 @@ class AsyncEventsGrailsPlugin {
 	def grailsVersion = "1.3.0 > *"
 	def dependsOn = [:]
 	def pluginExcludes = [
-			"grails-app/views/error.gsp"
+			"grails-app/domain/**/*",
+			"src/templates/**/*",
+			"src/groovy/org/codehaus/groovy/grails/plugin/asyncevents/test/**/*",
+			"grails-app/views/error.gsp",
+			"web-app/**/*"
 	]
 
 	def author = "Rob Fletcher"
