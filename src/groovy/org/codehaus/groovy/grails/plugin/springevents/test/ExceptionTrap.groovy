@@ -13,16 +13,24 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.codehaus.groovy.grails.plugin.asyncevents.test
+package org.codehaus.groovy.grails.plugin.springevents.test
 
-class Song {
+import org.springframework.util.ErrorHandler
+import java.util.concurrent.CountDownLatch
 
-	static belongsTo = [album: Album]
+class ExceptionTrap implements ErrorHandler {
 
-	String name
+	private final CountDownLatch latch
+	Throwable handledError
 
-	static constraints = {
-		name blank: false
+	ExceptionTrap() { }
+
+	ExceptionTrap(CountDownLatch latch) {
+		this.latch = latch
 	}
 
+	void handleError(Throwable t) {
+		handledError = t
+		latch?.countDown()
+	}
 }

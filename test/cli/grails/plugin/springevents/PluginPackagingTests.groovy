@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package grails.plugin.asyncevents
+package grails.plugin.springevents
 
 import grails.test.AbstractCliTestCase
 import java.util.zip.ZipFile
@@ -40,7 +40,7 @@ class PluginPackagingTests extends AbstractCliTestCase {
 			assertThat "Plugin zip contents", entryNames, not(hasItem(endsWith(".js")))
 			assertThat "Plugin zip contents", entryNames, not(hasItem(endsWith(".css")))
 			assertThat "Plugin zip contents", entryNames, not(hasItem(endsWith(".gsp")))
-			assertThat "Plugin zip contents", entryNames, not(hasItem(containsString("/grails/plugin/asyncevents/test/")))
+			assertThat "Plugin zip contents", entryNames, not(hasItem(containsString("/grails/plugin/springevents/test/")))
 			assertThat "Plugin zip contents", entryNames, not(hasItem(startsWith("src/templates")))
 		} finally {
 			zipFile.close()

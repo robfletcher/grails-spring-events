@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-import grails.plugin.asyncevents.GrailsApplicationEventMulticaster
+import grails.plugin.springevents.GrailsApplicationEventMulticaster
 import org.springframework.context.ApplicationEvent
 
 class SpringEventsGrailsPlugin {
@@ -24,7 +24,7 @@ class SpringEventsGrailsPlugin {
 	def pluginExcludes = [
 			"grails-app/domain/**/*",
 			"src/templates/**/*",
-			"src/groovy/org/codehaus/groovy/grails/plugin/asyncevents/test/**/*",
+			"src/groovy/org/codehaus/groovy/grails/plugin/springevents/test/**/*",
 			"grails-app/views/error.gsp",
 			"web-app/**/*"
 	]

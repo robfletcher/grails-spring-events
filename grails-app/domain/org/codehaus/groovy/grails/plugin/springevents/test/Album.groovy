@@ -13,15 +13,31 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.codehaus.groovy.grails.plugin.asyncevents.test
+package org.codehaus.groovy.grails.plugin.springevents.test
 
-import org.springframework.context.ApplicationEvent
+class Album {
 
-class DummyEvent extends ApplicationEvent {
-	
-	static final DUMMY_EVENT_SOURCE = new Object()
+	String artist
+	String name
+	List tracks = []
 
-	DummyEvent() {
-		super(DUMMY_EVENT_SOURCE)
+	static hasMany = [tracks: Song]
+
+	static constraints = {
+		artist blank: false
+		name blank: false, unique: "artist"
+	}
+
+	void afterInsert() {
+		publishEvent new InsertEvent(this)
+	}
+
+	void afterUpdate() {
+		publishEvent new UpdateEvent(this)
+	}
+
+	void afterDelete() {
+		publishEvent new DeleteEvent(this)
 	}
 }
+

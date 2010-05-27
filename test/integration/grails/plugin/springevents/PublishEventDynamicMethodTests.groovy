@@ -13,14 +13,14 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package grails.plugin.asyncevents
+package grails.plugin.springevents
 
 import java.util.concurrent.CountDownLatch
 import org.junit.After
 import org.junit.Test
 import org.springframework.context.ApplicationListener
-import org.codehaus.groovy.grails.plugin.asyncevents.test.*
-import static org.codehaus.groovy.grails.plugin.asyncevents.test.AsynchronousAssertions.waitFor
+import org.codehaus.groovy.grails.plugin.springevents.test.*
+import static org.codehaus.groovy.grails.plugin.springevents.test.AsynchronousAssertions.waitFor
 import org.springframework.context.ApplicationEvent
 
 class PublishEventDynamicMethodTests {

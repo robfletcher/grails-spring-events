@@ -13,27 +13,17 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package grails.plugin.asyncevents
+package org.codehaus.groovy.grails.plugin.springevents
 
-/**
- * Thrown from onApplicationEvent to indicate that a recoverable error has occurred (typically an external resource is
- * temporarily unavailable) and the notification can be retried later.
- */
-class RetryableFailureException extends RuntimeException {
+import org.springframework.context.ApplicationEvent
+import grails.plugin.springevents.RetryableFailureException
 
-	RetryableFailureException() {
-		super()
-	}
+class TooManyRetriesException extends RuntimeException {
 
-	RetryableFailureException(String message) {
-		super(message)
-	}
+	final ApplicationEvent event
 
-	RetryableFailureException(String message, Throwable cause) {
-		super(message, cause)
-	}
-
-	RetryableFailureException(Throwable cause) {
-		super(cause)
+	TooManyRetriesException(ApplicationEventNotification notification, RetryableFailureException cause) {
+		super("Exceeded maximum retries of $notification.retryCount when trying to notify listener $notification.target" as String, cause)
+		this.event = notification.event
 	}
 }

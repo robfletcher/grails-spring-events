@@ -13,31 +13,20 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.codehaus.groovy.grails.plugin.asyncevents.test
+package org.codehaus.groovy.grails.plugin.springevents.test
 
-class Album {
+import java.util.concurrent.CountDownLatch
+import org.junit.Assert
+import static java.util.concurrent.TimeUnit.MILLISECONDS
 
-	String artist
-	String name
-	List tracks = []
+class AsynchronousAssertions {
 
-	static hasMany = [tracks: Song]
+	static final long DEFAULT_TIMEOUT = 250L
 
-	static constraints = {
-		artist blank: false
-		name blank: false, unique: "artist"
+	static void waitFor(String message, CountDownLatch latch, long timeout = DEFAULT_TIMEOUT) {
+		if (!latch.await(timeout, MILLISECONDS)) {
+			Assert.fail "Timed out waiting for $message, expecting $latch.count more events"
+		}
 	}
 
-	void afterInsert() {
-		publishEvent new InsertEvent(this)
-	}
-
-	void afterUpdate() {
-		publishEvent new UpdateEvent(this)
-	}
-
-	void afterDelete() {
-		publishEvent new DeleteEvent(this)
-	}
 }
-

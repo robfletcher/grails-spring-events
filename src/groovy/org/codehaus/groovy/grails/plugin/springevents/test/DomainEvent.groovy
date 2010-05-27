@@ -13,18 +13,38 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.codehaus.groovy.grails.plugin.asyncevents
+package org.codehaus.groovy.grails.plugin.springevents.test
 
-import grails.plugin.asyncevents.RetryableFailureException
 import org.springframework.context.ApplicationEvent
 
-class NoRetryPolicyDefinedException extends RuntimeException {
+abstract class DomainEvent extends ApplicationEvent {
 
-	final ApplicationEvent event
+	DomainEvent(Object source) {
+		super(source)
+	}
 
-	NoRetryPolicyDefinedException(ApplicationEventNotification notification, RetryableFailureException cause) {
-		super("Listener $notification.target threw RetryableFailureException but does not define a retryPolicy property" as String, cause)
-		this.event = notification.event
+}
+
+class InsertEvent extends DomainEvent {
+
+	InsertEvent(Object source) {
+		super(source)
+	}
+
+}
+
+class UpdateEvent extends DomainEvent {
+
+	UpdateEvent(Object source) {
+		super(source)
+	}
+
+}
+
+class DeleteEvent extends DomainEvent {
+
+	DeleteEvent(Object source) {
+		super(source)
 	}
 
 }

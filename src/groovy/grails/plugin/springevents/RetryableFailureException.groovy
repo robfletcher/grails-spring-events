@@ -13,38 +13,27 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.codehaus.groovy.grails.plugin.asyncevents.test
+package grails.plugin.springevents
 
-import org.springframework.context.ApplicationEvent
+/**
+ * Thrown from onApplicationEvent to indicate that a recoverable error has occurred (typically an external resource is
+ * temporarily unavailable) and the notification can be retried later.
+ */
+class RetryableFailureException extends RuntimeException {
 
-abstract class DomainEvent extends ApplicationEvent {
-
-	DomainEvent(Object source) {
-		super(source)
+	RetryableFailureException() {
+		super()
 	}
 
-}
-
-class InsertEvent extends DomainEvent {
-
-	InsertEvent(Object source) {
-		super(source)
+	RetryableFailureException(String message) {
+		super(message)
 	}
 
-}
-
-class UpdateEvent extends DomainEvent {
-
-	UpdateEvent(Object source) {
-		super(source)
+	RetryableFailureException(String message, Throwable cause) {
+		super(message, cause)
 	}
 
-}
-
-class DeleteEvent extends DomainEvent {
-
-	DeleteEvent(Object source) {
-		super(source)
+	RetryableFailureException(Throwable cause) {
+		super(cause)
 	}
-
 }

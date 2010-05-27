@@ -13,17 +13,15 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.codehaus.groovy.grails.plugin.asyncevents
+package org.codehaus.groovy.grails.plugin.springevents.test
 
 import org.springframework.context.ApplicationEvent
-import grails.plugin.asyncevents.RetryableFailureException
 
-class TooManyRetriesException extends RuntimeException {
+class DummyEvent extends ApplicationEvent {
+	
+	static final DUMMY_EVENT_SOURCE = new Object()
 
-	final ApplicationEvent event
-
-	TooManyRetriesException(ApplicationEventNotification notification, RetryableFailureException cause) {
-		super("Exceeded maximum retries of $notification.retryCount when trying to notify listener $notification.target" as String, cause)
-		this.event = notification.event
+	DummyEvent() {
+		super(DUMMY_EVENT_SOURCE)
 	}
 }

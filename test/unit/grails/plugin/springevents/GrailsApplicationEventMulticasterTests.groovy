@@ -13,27 +13,27 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package grails.plugin.asyncevents
+package grails.plugin.springevents
 
 import java.util.concurrent.CountDownLatch
-import org.codehaus.groovy.grails.plugin.asyncevents.TooManyRetriesException
-import org.codehaus.groovy.grails.plugin.asyncevents.test.DummyEvent
-import org.codehaus.groovy.grails.plugin.asyncevents.test.ExceptionTrap
+import org.codehaus.groovy.grails.plugin.springevents.TooManyRetriesException
+import org.codehaus.groovy.grails.plugin.springevents.test.DummyEvent
+import org.codehaus.groovy.grails.plugin.springevents.test.ExceptionTrap
 import org.junit.After
 import org.junit.Before
 import org.junit.BeforeClass
 import org.junit.Test
 import org.springframework.context.ApplicationEvent
 import org.springframework.context.ApplicationListener
-import static grails.plugin.asyncevents.RetryPolicy.DEFAULT_BACKOFF_MULTIPLIER
+import static grails.plugin.springevents.RetryPolicy.DEFAULT_BACKOFF_MULTIPLIER
 import static grails.test.MockUtils.mockLogging
 import static java.util.concurrent.TimeUnit.MILLISECONDS
 import static java.util.concurrent.TimeUnit.SECONDS
-import static org.codehaus.groovy.grails.plugin.asyncevents.test.AsynchronousAssertions.waitFor
+import static org.codehaus.groovy.grails.plugin.springevents.test.AsynchronousAssertions.waitFor
 import static org.hamcrest.CoreMatchers.*
 import static org.junit.Assert.assertThat
 import static org.junit.Assert.assertTrue
-import org.codehaus.groovy.grails.plugin.asyncevents.NoRetryPolicyDefinedException
+import org.codehaus.groovy.grails.plugin.springevents.NoRetryPolicyDefinedException
 
 class GrailsApplicationEventMulticasterTests {
 

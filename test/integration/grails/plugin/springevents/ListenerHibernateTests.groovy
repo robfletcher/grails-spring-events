@@ -13,13 +13,13 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package grails.plugin.asyncevents
+package grails.plugin.springevents
 
 import java.util.concurrent.CountDownLatch
-import org.codehaus.groovy.grails.plugin.asyncevents.test.Album
-import org.codehaus.groovy.grails.plugin.asyncevents.test.DummyEvent
-import org.codehaus.groovy.grails.plugin.asyncevents.test.ExceptionTrap
-import org.codehaus.groovy.grails.plugin.asyncevents.test.Song
+import org.codehaus.groovy.grails.plugin.springevents.test.Album
+import org.codehaus.groovy.grails.plugin.springevents.test.DummyEvent
+import org.codehaus.groovy.grails.plugin.springevents.test.ExceptionTrap
+import org.codehaus.groovy.grails.plugin.springevents.test.Song
 import org.springframework.context.ApplicationEvent
 import org.springframework.context.ApplicationListener
 import static java.util.concurrent.TimeUnit.MILLISECONDS

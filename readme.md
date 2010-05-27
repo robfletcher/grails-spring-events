@@ -45,7 +45,7 @@ The `ApplicationListener` interface has a generic type parameter that you can us
 
 ## Retrying failed notifications
 
-Listener implementations may declare a `retryPolicy` property of type `grails.plugin.asyncevents.RetryPolicy` (or declare a `getRetryPolicy()` method). If such a property is present and the listener throws `grails.plugin.asyncevents.RetryableFailureException` from the `onApplicationEvent` method it will be re-notified at some time in the future according to the `retryPolicy` value. Throwing any other exception type will _not_ result in notification being retried.
+Listener implementations may declare a `retryPolicy` property of type `grails.plugin.springevents.RetryPolicy` (or declare a `getRetryPolicy()` method). If such a property is present and the listener throws `grails.plugin.springevents.RetryableFailureException` from the `onApplicationEvent` method it will be re-notified at some time in the future according to the `retryPolicy` value. Throwing any other exception type will _not_ result in notification being retried.
 
 Note: A `RetryableFailureException` thrown by a listener implementation is treated just like any other exception if the listener does not declare a `retryPolicy`.
 

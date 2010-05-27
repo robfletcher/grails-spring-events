@@ -13,24 +13,18 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.codehaus.groovy.grails.plugin.asyncevents.test
+package org.codehaus.groovy.grails.plugin.springevents
 
-import org.springframework.util.ErrorHandler
-import java.util.concurrent.CountDownLatch
+import grails.plugin.springevents.RetryableFailureException
+import org.springframework.context.ApplicationEvent
 
-class ExceptionTrap implements ErrorHandler {
+class NoRetryPolicyDefinedException extends RuntimeException {
 
-	private final CountDownLatch latch
-	Throwable handledError
+	final ApplicationEvent event
 
-	ExceptionTrap() { }
-
-	ExceptionTrap(CountDownLatch latch) {
-		this.latch = latch
+	NoRetryPolicyDefinedException(ApplicationEventNotification notification, RetryableFailureException cause) {
+		super("Listener $notification.target threw RetryableFailureException but does not define a retryPolicy property" as String, cause)
+		this.event = notification.event
 	}
 
-	void handleError(Throwable t) {
-		handledError = t
-		latch?.countDown()
-	}
 }
