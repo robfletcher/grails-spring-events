@@ -95,7 +95,7 @@ Similarly the service uses a [ScheduledExecutorService][5] to re-queue failed no
 	beans {
 		applicationEventMulticaster {
 			errorHandler = new SomeErrorHandlerImpl()
-			eventProcessor = java.util.concurrent.Executors.newCachedThreadPool()
+			taskExecutor = java.util.concurrent.Executors.newCachedThreadPool()
 			retryScheduler = java.util.concurrent.Executors.newScheduledThreadPool(5)
 		}
 	}
