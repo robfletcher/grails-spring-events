@@ -109,10 +109,11 @@ class GrailsApplicationEventMulticaster extends AbstractApplicationEventMulticas
 			closure()
 		} finally {
 			if (sessionFactory) {
-				SessionHolder sessionHolder = TransactionSynchronizationManager.unbindResource(sessionFactory)
+				SessionHolder sessionHolder = TransactionSynchronizationManager.getResource(sessionFactory)
 				if (sessionHolder.session.flushMode != FlushMode.MANUAL) {
 					sessionHolder.session.flush()
 				}
+				TransactionSynchronizationManager.unbindResource(sessionFactory)
 				SessionFactoryUtils.closeSession(sessionHolder.session)
 				if (log.isDebugEnabled()) log.debug "Unbound session"
 			}
