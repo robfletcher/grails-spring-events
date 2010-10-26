@@ -20,8 +20,10 @@ import org.springframework.context.ApplicationListener
 class TestTransactionalListenerService implements ApplicationListener<TestEvent>{
 	
 	def received = null
+	def counter = 0
 	
 	void onApplicationEvent(TestEvent event) {
+		++counter
 		received = event.source
 	}
 

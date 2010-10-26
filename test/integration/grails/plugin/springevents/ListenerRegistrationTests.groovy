@@ -16,10 +16,12 @@
 package grails.plugin.springevents
 
 import grails.plugin.springevents.test.*
+import static org.codehaus.groovy.grails.plugin.springevents.test.AsynchronousAssertions.waitFor
 
-class ListenerRegistrationTests {
+class ListenerRegistrationTests extends GroovyTestCase {
 
 	def applicationEventMulticaster
+	def grailsApplication
 	
 	void testListenerServiceIsRegistered() {
 		assert TestListenerService in applicationEventMulticaster.applicationListeners*.class
@@ -29,4 +31,30 @@ class ListenerRegistrationTests {
 		assert TestTransactionalListenerService in applicationEventMulticaster.applicationListeners*.class
 	}
 
+	void testDispatchingToListeners() {
+		// Must lazily load these in this manner because of the above tests
+		def testListenerService = grailsApplication.mainContext.testListenerService
+		def testTransactionalListenerService = grailsApplication.mainContext.testTransactionalListenerService
+
+		[testListenerService, testTransactionalListenerService]*.counter = 0
+		
+		def event = new TestEvent(1)
+		applicationEventMulticaster.multicastEvent(event)
+		
+		waitFor(1000) { testListenerService.counter > 0 }
+		waitFor(1000) { testTransactionalListenerService.counter > 0 }
+		
+		// http://jira.codehaus.org/browse/GRAILSPLUGINS-2317
+		shouldFail {
+			waitFor(2000) { testTransactionalListenerService.counter == 2 }
+		}
+		
+		assert testListenerService.counter == 1
+		assert testTransactionalListenerService.counter == 1
+		
+		assert testListenerService.received == event.source
+		assert testTransactionalListenerService.received == event.source
+		
+		[testListenerService, testTransactionalListenerService]*.counter = 0
+	}
 }

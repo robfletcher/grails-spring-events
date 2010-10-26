@@ -16,6 +16,7 @@
 import grails.plugin.springevents.GrailsApplicationEventMulticaster
 import org.springframework.context.ApplicationEvent
 import org.springframework.context.ApplicationListener
+import grails.plugin.springevents.ProxyUtils
 
 class SpringEventsGrailsPlugin {
 
@@ -63,6 +64,22 @@ Provides asynchronous Spring application event processing for Grails application
 				multicaster.addApplicationListenerBean(it.propertyName)
 			}
 		}
+
+		/*
+			Beans with transactional proxies end up getting registered twice, due to a
+			bug in AbstractApplicationEventMulticaster. To counter, we manually go and remove
+			the non proxy bean from the multicaster.
+			
+			See: http://jira.codehaus.org/browse/GRAILSPLUGINS-2317
+		*/
+		def servicesPlugin = ctx.pluginManager.getGrailsPlugin("services").instance
+		application.serviceClasses.each {
+			if (ApplicationListener.isAssignableFrom(it.clazz) && servicesPlugin.shouldCreateTransactionalProxy(it)) {
+				def proxy = ctx.getBean(it.propertyName)
+				multicaster.removeApplicationListener(ProxyUtils.ultimateTarget(proxy))
+			}
+		}
+		
 	}
 	
 	def doWithDynamicMethods = {

@@ -22,8 +22,10 @@ class TestListenerService implements ApplicationListener<TestEvent>{
 	static transactional = false
 	
 	def received = null
+	def counter = 0
 	
 	void onApplicationEvent(TestEvent event) {
+		++counter
 		received = event.source
 	}
 
