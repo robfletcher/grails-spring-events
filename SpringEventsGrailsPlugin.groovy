@@ -21,7 +21,7 @@ import org.codehaus.groovy.grails.plugins.PluginManagerHolder
 
 class SpringEventsGrailsPlugin {
 
-	def version = "1.1-SNAPSHOT"
+	def version = "1.1"
 	def grailsVersion = "1.2.0 > *"
 	def dependsOn = [:]
 	def observe = ["controllers", "services"]
