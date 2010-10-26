@@ -17,12 +17,14 @@ import grails.plugin.springevents.GrailsApplicationEventMulticaster
 import org.springframework.context.ApplicationEvent
 import org.springframework.context.ApplicationListener
 import grails.plugin.springevents.ProxyUtils
+import org.codehaus.groovy.grails.plugins.PluginManagerHolder
 
 class SpringEventsGrailsPlugin {
 
 	def version = "1.1-SNAPSHOT"
 	def grailsVersion = "1.2.0 > *"
 	def dependsOn = [:]
+	def observe = ["controllers", "services"]
 	def pluginExcludes = [
 			"grails-app/domain/**/*",
 			"src/templates/**/*",
@@ -72,7 +74,7 @@ Provides asynchronous Spring application event processing for Grails application
 			
 			See: http://jira.codehaus.org/browse/GRAILSPLUGINS-2317
 		*/
-		def servicesPlugin = ctx.pluginManager.getGrailsPlugin("services").instance
+		def servicesPlugin = PluginManagerHolder.pluginManager.getGrailsPlugin("services").instance
 		application.serviceClasses.each {
 			if (ApplicationListener.isAssignableFrom(it.clazz) && servicesPlugin.shouldCreateTransactionalProxy(it)) {
 				def proxy = ctx.getBean(it.propertyName)
@@ -84,9 +86,22 @@ Provides asynchronous Spring application event processing for Grails application
 	
 	def doWithDynamicMethods = {
 		[application.controllerClasses, application.serviceClasses, application.domainClasses].flatten().each {
-			it.metaClass.publishEvent = { ApplicationEvent event ->
-				application.mainContext.publishEvent(event)
-			}
+			addPublishEvent(it, application.mainContext)
+		}
+	}
+	
+	def onChange = { event ->
+		if (application.isControllerClass(event.source) || 
+			application.isServiceClass(event.source) ||
+			application.isDomainClass(event.source)
+		) {
+			addPublishEvent(event.source, application.mainContext)
+		}
+	}
+	
+	def addPublishEvent(subject, ctx) {
+		subject.metaClass.publishEvent = { ApplicationEvent event ->
+			ctx.publishEvent(event)
 		}
 	}
 }
