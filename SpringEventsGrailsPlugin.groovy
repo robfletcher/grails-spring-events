@@ -18,7 +18,7 @@ import org.springframework.context.ApplicationEvent
 
 class SpringEventsGrailsPlugin {
 
-	def version = "1.0"
+	def version = "1.1-SNAPSHOT"
 	def grailsVersion = "1.2.0 > *"
 	def dependsOn = [:]
 	def pluginExcludes = [
