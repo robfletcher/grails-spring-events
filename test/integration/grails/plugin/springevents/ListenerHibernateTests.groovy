@@ -70,7 +70,7 @@ class ListenerHibernateTests {
 
 	@After
 	void removeAllListeners() {
-		applicationEventMulticaster.removeAllListeners()
+		applicationEventMulticaster.removeApplicationListener(listener)
 	}
 
 	@Test

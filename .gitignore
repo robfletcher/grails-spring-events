@@ -6,3 +6,4 @@ out
 *.xml
 *.zip
 projectFilesBackup
+.DS_Store

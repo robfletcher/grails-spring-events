@@ -48,7 +48,7 @@ class PluginPackagingTests extends AbstractCliTestCase {
 	}
 
 	def getPluginVersion() {
-		"1.0" // TODO: work this out rather than hardcoding
+		getClass().classLoader.loadClass("SpringEventsGrailsPlugin").newInstance().version
 	}
 
 }
