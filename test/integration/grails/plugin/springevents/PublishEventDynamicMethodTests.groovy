@@ -29,29 +29,30 @@ class PublishEventDynamicMethodTests {
 
 	def asyncApplicationEventMulticaster
 
+	private insertLatch = new CountDownLatch(1)
+	private updateLatch = new CountDownLatch(1)
+	private deleteLatch = new CountDownLatch(1)
+	private listener = { ApplicationEvent event ->
+		switch (event) {
+			case InsertEvent:
+				insertLatch.countDown()
+				break
+			case UpdateEvent:
+				updateLatch.countDown()
+				break
+			case DeleteEvent:
+				deleteLatch.countDown()
+				break
+		}
+	} as ApplicationListener
+
 	@After
 	void tearDownListeners() {
-		asyncApplicationEventMulticaster.removeAllListeners()
+		asyncApplicationEventMulticaster.removeApplicationListener listener
 	}
 
 	@Test
 	void domainClassesCanPublishEvents() {
-		def insertLatch = new CountDownLatch(1)
-		def updateLatch = new CountDownLatch(1)
-		def deleteLatch = new CountDownLatch(1)
-		def listener = { ApplicationEvent event ->
-			switch (event) {
-				case InsertEvent:
-					insertLatch.countDown()
-					break
-				case UpdateEvent:
-					updateLatch.countDown()
-					break
-				case DeleteEvent:
-					deleteLatch.countDown()
-					break
-			}
-		} as ApplicationListener
 		asyncApplicationEventMulticaster.addApplicationListener listener
 
 		def album = new Album(artist: "Yeasayer", name: "Odd Blood").save(flush: true, failOnError: true)
