@@ -45,7 +45,7 @@ class ListenerHibernateTests {
 		Album.withNewSession {
 			def album = new Album(artist: "The Hold Steady", name: "Heaven Is Whenever")
 			["The Sweet Part of the City", "Soft In the Center", "The Weekenders", "The Smidge", "Rock Problems", "We Can Get Together", "Hurricane J", "Barely Breathing", "Our Whole Lives"].each {
-				album.tracks << new Song(name: it)
+				album.addToTracks new Song(name: it)
 			}
 			album.save(flush: true, failOnError: true)
 		}

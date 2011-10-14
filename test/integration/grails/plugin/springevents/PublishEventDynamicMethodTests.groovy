@@ -59,7 +59,7 @@ class PublishEventDynamicMethodTests {
 
 		waitFor "Insert event", insertLatch
 
-		album.tracks << new Song(name: "Ambling Alp")
+		album.addToTracks new Song(name: "Ambling Alp")
 		album.save(flush: true, failOnError: true)
 
 		waitFor "Update event", updateLatch
