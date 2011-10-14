@@ -15,13 +15,15 @@
  */
 package grails.plugin.springevents
 
+import static org.codehaus.groovy.grails.plugin.springevents.test.AsynchronousAssertions.waitFor
+
 import java.util.concurrent.CountDownLatch
+
+import org.codehaus.groovy.grails.plugin.springevents.test.*
 import org.junit.After
 import org.junit.Test
-import org.springframework.context.ApplicationListener
-import org.codehaus.groovy.grails.plugin.springevents.test.*
-import static org.codehaus.groovy.grails.plugin.springevents.test.AsynchronousAssertions.waitFor
 import org.springframework.context.ApplicationEvent
+import org.springframework.context.ApplicationListener
 
 class PublishEventDynamicMethodTests {
 

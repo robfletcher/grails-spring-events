@@ -15,8 +15,9 @@
  */
 package org.codehaus.groovy.grails.plugin.springevents.test
 
-import org.springframework.util.ErrorHandler
 import java.util.concurrent.CountDownLatch
+
+import org.springframework.util.ErrorHandler
 
 class ExceptionTrap implements ErrorHandler {
 

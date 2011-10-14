@@ -15,20 +15,22 @@
  */
 package grails.plugin.springevents
 
+import static java.util.concurrent.TimeUnit.MILLISECONDS
+import static org.hamcrest.CoreMatchers.notNullValue
+import static org.junit.Assert.assertThat
+import static org.junit.Assert.fail
+import static org.junit.matchers.JUnitMatchers.hasItems
+
 import java.util.concurrent.CountDownLatch
+import java.util.concurrent.TimeUnit
+
 import org.codehaus.groovy.grails.plugin.springevents.test.Album
 import org.codehaus.groovy.grails.plugin.springevents.test.DummyEvent
 import org.codehaus.groovy.grails.plugin.springevents.test.ExceptionTrap
 import org.codehaus.groovy.grails.plugin.springevents.test.Song
+import org.junit.*
 import org.springframework.context.ApplicationEvent
 import org.springframework.context.ApplicationListener
-import static java.util.concurrent.TimeUnit.MILLISECONDS
-import static org.hamcrest.CoreMatchers.notNullValue
-import org.junit.*
-import static org.junit.Assert.assertThat
-import static org.junit.Assert.fail
-import static org.junit.matchers.JUnitMatchers.hasItems
-import java.util.concurrent.TimeUnit
 
 class ListenerHibernateTests {
 
