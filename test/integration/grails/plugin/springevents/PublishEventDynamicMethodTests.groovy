@@ -27,11 +27,11 @@ import org.springframework.context.ApplicationListener
 
 class PublishEventDynamicMethodTests {
 
-	def applicationEventMulticaster
+	def asyncApplicationEventMulticaster
 
 	@After
 	void tearDownListeners() {
-		applicationEventMulticaster.removeAllListeners()
+		asyncApplicationEventMulticaster.removeAllListeners()
 	}
 
 	@Test
@@ -52,7 +52,7 @@ class PublishEventDynamicMethodTests {
 					break
 			}
 		} as ApplicationListener
-		applicationEventMulticaster.addApplicationListener listener
+		asyncApplicationEventMulticaster.addApplicationListener listener
 
 		def album = new Album(artist: "Yeasayer", name: "Odd Blood").save(flush: true, failOnError: true)
 

@@ -36,7 +36,7 @@ class ListenerHibernateTests {
 
 	static transactional = false
 
-	def applicationEventMulticaster
+	def asyncApplicationEventMulticaster
 	ExceptionTrap exceptionTrap = new ExceptionTrap()
 	ClosureListener listener
 
@@ -62,17 +62,17 @@ class ListenerHibernateTests {
 	@Before
 	void setUpListener() {
 		listener = new ClosureListener()
-		applicationEventMulticaster.addApplicationListener(listener)
+		asyncApplicationEventMulticaster.addApplicationListener(listener)
 	}
 
 	@Before
 	void setUpExceptionTrap() {
-		applicationEventMulticaster.errorHandler = exceptionTrap
+		asyncApplicationEventMulticaster.errorHandler = exceptionTrap
 	}
 
 	@After
 	void removeAllListeners() {
-		applicationEventMulticaster.removeApplicationListener(listener)
+		asyncApplicationEventMulticaster.removeApplicationListener(listener)
 	}
 
 	@Test
@@ -82,7 +82,7 @@ class ListenerHibernateTests {
 			domainObjectInstance = Album.findByArtist("The Hold Steady")
 		}
 
-		applicationEventMulticaster.multicastEvent(new DummyEvent())
+		asyncApplicationEventMulticaster.multicastEvent(new DummyEvent())
 
 		waitForListenerToComplete()
 		assertThat "domain object", domainObjectInstance, notNullValue()
@@ -100,7 +100,7 @@ class ListenerHibernateTests {
 
 		def domainObjectInstance = Album.findByArtist("The Hold Steady")
 		domainObjectInstance.discard()
-		applicationEventMulticaster.multicastEvent(new DomainEvent(domainObjectInstance: domainObjectInstance))
+		asyncApplicationEventMulticaster.multicastEvent(new DomainEvent(domainObjectInstance: domainObjectInstance))
 
 		waitForListenerToComplete()
 		assertThat "domain object", domainObjectInstance, notNullValue()
@@ -114,7 +114,7 @@ class ListenerHibernateTests {
 			songNames = domainObjectInstance.tracks.name
 		}
 
-		applicationEventMulticaster.multicastEvent(new DummyEvent())
+		asyncApplicationEventMulticaster.multicastEvent(new DummyEvent())
 
 		waitForListenerToComplete()
 		assertThat "lazy loaded domain association", songNames, hasItems("The Sweet Part of the City", "Soft In the Center", "The Weekenders")

@@ -20,15 +20,15 @@ import grails.plugin.springevents.test.*
 
 class ListenerRegistrationTests extends GroovyTestCase {
 
-	def applicationEventMulticaster
+	def asyncApplicationEventMulticaster
 	def grailsApplication
 
 	void testListenerServiceIsRegistered() {
-		assert TestListenerService in applicationEventMulticaster.applicationListeners*.class
+		assert TestListenerService in asyncApplicationEventMulticaster.applicationListeners*.class
 	}
 
 	void testTransactionalListenerServiceIsRegistered() {
-		assert TestTransactionalListenerService in applicationEventMulticaster.applicationListeners*.class
+		assert TestTransactionalListenerService in asyncApplicationEventMulticaster.applicationListeners*.class
 	}
 
 	void testDispatchingToListeners() {
@@ -39,7 +39,7 @@ class ListenerRegistrationTests extends GroovyTestCase {
 		[testListenerService, testTransactionalListenerService]*.counter = 0
 
 		def event = new TestEvent(1)
-		applicationEventMulticaster.multicastEvent(event)
+		asyncApplicationEventMulticaster.multicastEvent(event)
 
 		waitFor(1000) { testListenerService.counter > 0 }
 		waitFor(1000) { testTransactionalListenerService.counter > 0 }

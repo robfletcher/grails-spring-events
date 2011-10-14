@@ -44,12 +44,18 @@ class SpringEventsGrailsPlugin {
 	def documentation = "http://grails.org/plugin/spring-events"
 
 	def doWithSpring = {
-		applicationEventMulticaster(GrailsApplicationEventMulticaster) {
+		asyncApplicationEventMulticaster(GrailsApplicationEventMulticaster) {
 			sessionFactory = ref("sessionFactory")
+		}
+		asyncEventPublisher(AsyncEventPublisher) { bean ->
+			bean.initMethod = 'refresh'
+			asyncApplicationEventMulticaster = ref('asyncApplicationEventMulticaster')
 		}
 	}
 
-	def doWithApplicationContext = { ctx ->
+	def doWithApplicationContext = { ApplicationContext ctx ->
+
+		def listenerBeanNames = ctx.getBeanNamesForType(ApplicationListener) as Set
 		/*
 			Because transactional beans are behind a factory and are lazy, they do not
 			get found in time to be automatically registered. To force the issue, we hand
@@ -59,10 +65,13 @@ class SpringEventsGrailsPlugin {
 			See: http://jira.codehaus.org/browse/GRAILSPLUGINS-2552
 		*/
 		def multicaster = ctx.getBean('applicationEventMulticaster')
+		def asyncMulticaster = ctx.getBean('asyncApplicationEventMulticaster')
 		application.serviceClasses.each {
 			if (ApplicationListener.isAssignableFrom(it.clazz)) {
 				log.debug "pre-registering service $it.name"
 				multicaster.addApplicationListenerBean(it.propertyName)
+				asyncMulticaster.addApplicationListenerBean(it.propertyName)
+				listenerBeanNames.remove it.propertyName
 			}
 		}
 
@@ -79,6 +88,11 @@ class SpringEventsGrailsPlugin {
 				def proxy = ctx.getBean(it.propertyName)
 				multicaster.removeApplicationListener(ProxyUtils.ultimateTarget(proxy))
 			}
+		}
+
+		// 'copy' the listeners to the async multicaster that weren't already added
+		for (String name in listenerBeanNames) {
+			asyncMulticaster.addApplicationListenerBean(name)
 		}
 	}
 
@@ -98,8 +112,9 @@ class SpringEventsGrailsPlugin {
 	}
 
 	def addPublishEvent(subject, ctx) {
+		ApplicationEventPublisher asyncEventPublisher = ctx.asyncEventPublisher
 		subject.metaClass.publishEvent = { ApplicationEvent event ->
-			ctx.publishEvent(event)
+			asyncEventPublisher.publishEvent(event)
 		}
 	}
 }
