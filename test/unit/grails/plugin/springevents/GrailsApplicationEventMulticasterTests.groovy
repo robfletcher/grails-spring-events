@@ -15,7 +15,18 @@
  */
 package grails.plugin.springevents
 
+import static grails.plugin.springevents.RetryPolicy.DEFAULT_BACKOFF_MULTIPLIER
+import static grails.test.MockUtils.mockLogging
+import static java.util.concurrent.TimeUnit.MILLISECONDS
+import static java.util.concurrent.TimeUnit.SECONDS
+import static org.codehaus.groovy.grails.plugin.springevents.test.AsynchronousAssertions.waitFor
+import static org.hamcrest.CoreMatchers.*
+import static org.junit.Assert.assertThat
+import static org.junit.Assert.assertTrue
+
 import java.util.concurrent.CountDownLatch
+
+import org.codehaus.groovy.grails.plugin.springevents.NoRetryPolicyDefinedException
 import org.codehaus.groovy.grails.plugin.springevents.TooManyRetriesException
 import org.codehaus.groovy.grails.plugin.springevents.test.DummyEvent
 import org.codehaus.groovy.grails.plugin.springevents.test.ExceptionTrap
@@ -25,15 +36,6 @@ import org.junit.BeforeClass
 import org.junit.Test
 import org.springframework.context.ApplicationEvent
 import org.springframework.context.ApplicationListener
-import static grails.plugin.springevents.RetryPolicy.DEFAULT_BACKOFF_MULTIPLIER
-import static grails.test.MockUtils.mockLogging
-import static java.util.concurrent.TimeUnit.MILLISECONDS
-import static java.util.concurrent.TimeUnit.SECONDS
-import static org.codehaus.groovy.grails.plugin.springevents.test.AsynchronousAssertions.waitFor
-import static org.hamcrest.CoreMatchers.*
-import static org.junit.Assert.assertThat
-import static org.junit.Assert.assertTrue
-import org.codehaus.groovy.grails.plugin.springevents.NoRetryPolicyDefinedException
 
 class GrailsApplicationEventMulticasterTests {
 

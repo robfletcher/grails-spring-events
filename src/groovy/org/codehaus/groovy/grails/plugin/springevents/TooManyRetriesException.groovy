@@ -15,8 +15,9 @@
  */
 package org.codehaus.groovy.grails.plugin.springevents
 
-import org.springframework.context.ApplicationEvent
 import grails.plugin.springevents.RetryableFailureException
+
+import org.springframework.context.ApplicationEvent
 
 class TooManyRetriesException extends RuntimeException {
 
