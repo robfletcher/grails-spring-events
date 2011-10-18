@@ -1,8 +1,10 @@
-target
-*.iws
+/.idea
+/target
+/*.iws
+/*.iml
 *.log
-web-app
-out
+/web-app
+/out
 *.xml
 *.zip
 projectFilesBackup
