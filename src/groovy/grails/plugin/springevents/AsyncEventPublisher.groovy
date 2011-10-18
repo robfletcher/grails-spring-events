@@ -17,13 +17,10 @@
 package grails.plugin.springevents
 
 import java.lang.reflect.Field
-
-import org.springframework.beans.BeansException
 import org.springframework.beans.factory.InitializingBean
 import org.springframework.context.event.ApplicationEventMulticaster
 import org.springframework.context.support.GenericApplicationContext
-import org.springframework.util.Assert
-import org.springframework.util.ReflectionUtils
+import org.springframework.util.*
 
 /**
  * Event publisher used by GrailsApplicationEventMulticaster to multicast events asynchronously.

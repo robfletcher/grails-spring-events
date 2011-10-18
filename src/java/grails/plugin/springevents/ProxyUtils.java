@@ -16,11 +16,10 @@
 
 package grails.plugin.springevents;
 
-import org.springframework.aop.TargetClassAware;
-import org.springframework.aop.TargetSource;
-import org.springframework.aop.framework.Advised;
-import org.springframework.aop.target.SingletonTargetSource;
-import org.springframework.util.Assert;
+import org.springframework.aop.*;
+import org.springframework.aop.framework.*;
+import org.springframework.aop.target.*;
+import org.springframework.util.*;
 
 public abstract class ProxyUtils {
 

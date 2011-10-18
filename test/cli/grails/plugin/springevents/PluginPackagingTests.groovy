@@ -15,13 +15,11 @@
  */
 package grails.plugin.springevents
 
+import grails.test.AbstractCliTestCase
+import java.util.zip.ZipFile
+import org.junit.Test
 import static org.hamcrest.Matchers.*
 import static org.junit.Assert.assertThat
-import grails.test.AbstractCliTestCase
-
-import java.util.zip.ZipFile
-
-import org.junit.Test
 
 class PluginPackagingTests extends AbstractCliTestCase {
 

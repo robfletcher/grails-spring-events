@@ -17,8 +17,6 @@ package grails.plugin.springevents
 
 import grails.plugin.springevents.test.*
 
-import org.codehaus.groovy.grails.plugin.springevents.test.*
-
 class ReloadTests extends GroovyTestCase {
 
 	def grailsApplication

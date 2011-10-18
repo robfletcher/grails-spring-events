@@ -15,8 +15,8 @@
  */
 package grails.plugin.springevents
 
-import static org.codehaus.groovy.grails.plugin.springevents.test.AsynchronousAssertions.waitFor
 import grails.plugin.springevents.test.*
+import static org.codehaus.groovy.grails.plugin.springevents.test.AsynchronousAssertions.waitFor
 
 class ListenerRegistrationTests extends GroovyTestCase {
 
