@@ -13,19 +13,14 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-import grails.plugin.springevents.AsyncEventPublisher
-import grails.plugin.springevents.GrailsApplicationEventMulticaster
-import grails.plugin.springevents.ProxyUtils
 
-import org.springframework.context.ApplicationContext
-import org.springframework.context.ApplicationEvent
-import org.springframework.context.ApplicationEventPublisher
-import org.springframework.context.ApplicationListener
+import grails.plugin.springevents.*
+import org.springframework.context.*
 
 class SpringEventsGrailsPlugin {
 
-	def version = "1.1"
-	def grailsVersion = "1.2.0 > *"
+	def version = "1.2-SNAPSHOT"
+	def grailsVersion = "2.0.0 > *"
 	def dependsOn = [:]
 	def observe = ["controllers", "services"]
 	def pluginExcludes = [
@@ -45,7 +40,7 @@ class SpringEventsGrailsPlugin {
 
 	def doWithSpring = {
 		asyncApplicationEventMulticaster(GrailsApplicationEventMulticaster) {
-			sessionFactory = ref("sessionFactory")
+			persistenceInterceptor = ref("persistenceInterceptor")
 		}
 		asyncEventPublisher(AsyncEventPublisher) { bean ->
 			bean.initMethod = 'refresh'

@@ -16,36 +16,19 @@
 
 package grails.plugin.springevents
 
-import static java.util.concurrent.TimeUnit.MILLISECONDS
-import static java.util.concurrent.TimeUnit.SECONDS
-
-import java.util.concurrent.ExecutorService
-import java.util.concurrent.Executors
-import java.util.concurrent.ScheduledExecutorService
-import java.util.concurrent.TimeUnit
-
-import org.codehaus.groovy.grails.plugin.springevents.ApplicationEventNotification
-import org.codehaus.groovy.grails.plugin.springevents.NoRetryPolicyDefinedException
-import org.codehaus.groovy.grails.plugin.springevents.TooManyRetriesException
-import org.hibernate.FlushMode
-import org.hibernate.SessionFactory
-import org.slf4j.Logger
-import org.slf4j.LoggerFactory
-import org.springframework.beans.factory.BeanFactory
-import org.springframework.beans.factory.DisposableBean
-import org.springframework.beans.factory.InitializingBean
-import org.springframework.context.ApplicationEvent
-import org.springframework.context.ApplicationListener
 import org.springframework.context.event.AbstractApplicationEventMulticaster
-import org.springframework.orm.hibernate3.SessionFactoryUtils
-import org.springframework.orm.hibernate3.SessionHolder
 import org.springframework.scheduling.support.TaskUtils
-import org.springframework.transaction.support.TransactionSynchronizationManager
 import org.springframework.util.ErrorHandler
+import java.util.concurrent.*
+import static java.util.concurrent.TimeUnit.*
+import org.codehaus.groovy.grails.plugin.springevents.*
+import org.slf4j.*
+import org.springframework.beans.factory.*
+import org.springframework.context.*
 
 /**
  * An ApplicationEventMulticaster implementation that uses an ExecutorService to asynchronously notify listeners. The
- * implementation binds a Hibernate session to the notification thread so that listeners have full access to Grails
+ * implementation binds a persistence session to the notification thread so that listeners have full access to Grails
  * domain objects. Notifications can be re-attempted if a listener throws RetryableFailureException.
  */
 class GrailsApplicationEventMulticaster extends AbstractApplicationEventMulticaster implements InitializingBean, DisposableBean {
@@ -53,7 +36,7 @@ class GrailsApplicationEventMulticaster extends AbstractApplicationEventMulticas
 	ExecutorService taskExecutor
 	ScheduledExecutorService retryScheduler
 	ErrorHandler errorHandler
-	SessionFactory sessionFactory
+	def persistenceInterceptor
 
 	private final Logger log = LoggerFactory.getLogger(GrailsApplicationEventMulticaster)
 
@@ -67,7 +50,7 @@ class GrailsApplicationEventMulticaster extends AbstractApplicationEventMulticas
 		getApplicationListeners(event).each { ApplicationListener listener ->
 			def notification = new ApplicationEventNotification(listener, event)
 			taskExecutor.execute {
-				withHibernateSession {
+				withPersistenceSession {
 					notifyListener notification
 				}
 			}
@@ -100,25 +83,14 @@ class GrailsApplicationEventMulticaster extends AbstractApplicationEventMulticas
 		}
 	}
 
-	private void withHibernateSession(Closure closure) {
-		if (sessionFactory) {
-			def session = SessionFactoryUtils.getSession(sessionFactory, true)
-			session.flushMode = FlushMode.AUTO
-			TransactionSynchronizationManager.bindResource(sessionFactory, new SessionHolder(session))
-			if (log.isDebugEnabled()) log.debug "Bound session to thread"
-		}
+	private void withPersistenceSession(Closure closure) {
+		log.debug "Initializing PersistenceContextInterceptor ${persistenceInterceptor.getClass().name}"
+		persistenceInterceptor?.init()
 		try {
 			closure()
 		} finally {
-			if (sessionFactory) {
-				SessionHolder sessionHolder = TransactionSynchronizationManager.getResource(sessionFactory)
-				if (sessionHolder.session.flushMode != FlushMode.MANUAL) {
-					sessionHolder.session.flush()
-				}
-				TransactionSynchronizationManager.unbindResource(sessionFactory)
-				SessionFactoryUtils.closeSession(sessionHolder.session)
-				if (log.isDebugEnabled()) log.debug "Unbound session"
-			}
+			persistenceInterceptor?.flush()
+			persistenceInterceptor?.destroy()
 		}
 	}
 
