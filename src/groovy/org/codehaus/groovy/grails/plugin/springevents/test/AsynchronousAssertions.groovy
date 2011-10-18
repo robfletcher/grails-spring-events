@@ -15,9 +15,11 @@
  */
 package org.codehaus.groovy.grails.plugin.springevents.test
 
-import java.util.concurrent.CountDownLatch
-import org.junit.Assert
 import static java.util.concurrent.TimeUnit.MILLISECONDS
+
+import java.util.concurrent.CountDownLatch
+
+import org.junit.Assert
 
 class AsynchronousAssertions {
 
@@ -29,7 +31,7 @@ class AsynchronousAssertions {
 			Assert.fail "Timed out waiting for $message, expecting $latch.count more events"
 		}
 	}
-	
+
 	static waitFor(Closure condition) {
 		waitFor(null, condition)
 	}
@@ -41,21 +43,20 @@ class AsynchronousAssertions {
 	static waitFor(Long timeout, Long interval, Closure condition) {
 		timeout = timeout ?: DEFAULT_TIMEOUT
 		interval = [timeout, interval ?: DEFAULT_INTERVAL].min()
-		
+
 		def loops = Math.ceil(timeout / interval)
 		def pass = condition()
 		def i = 0
-		
+
 		while (!pass && i++ < loops) {
 			Thread.sleep((interval) as long)
 			pass = condition()
 		}
-		
+
 		if (i >= loops) {
-			throw new AssertionError("condition did not pass in $timeout seconds")
+			throw new AssertionError("condition did not pass in $timeout milliseconds")
 		}
-		
+
 		pass
 	}
-
 }

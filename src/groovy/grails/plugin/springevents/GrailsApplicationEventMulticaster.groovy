@@ -16,10 +16,17 @@
 
 package grails.plugin.springevents
 
+import static java.util.concurrent.TimeUnit.MILLISECONDS
+import static java.util.concurrent.TimeUnit.SECONDS
+
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
 import java.util.concurrent.ScheduledExecutorService
 import java.util.concurrent.TimeUnit
+
+import org.codehaus.groovy.grails.plugin.springevents.ApplicationEventNotification
+import org.codehaus.groovy.grails.plugin.springevents.NoRetryPolicyDefinedException
+import org.codehaus.groovy.grails.plugin.springevents.TooManyRetriesException
 import org.hibernate.FlushMode
 import org.hibernate.SessionFactory
 import org.slf4j.Logger
@@ -35,16 +42,11 @@ import org.springframework.orm.hibernate3.SessionHolder
 import org.springframework.scheduling.support.TaskUtils
 import org.springframework.transaction.support.TransactionSynchronizationManager
 import org.springframework.util.ErrorHandler
-import static java.util.concurrent.TimeUnit.MILLISECONDS
-import static java.util.concurrent.TimeUnit.SECONDS
-import org.codehaus.groovy.grails.plugin.springevents.ApplicationEventNotification
-import org.codehaus.groovy.grails.plugin.springevents.TooManyRetriesException
-import org.codehaus.groovy.grails.plugin.springevents.NoRetryPolicyDefinedException
 
 /**
  * An ApplicationEventMulticaster implementation that uses an ExecutorService to asynchronously notify listeners. The
  * implementation binds a Hibernate session to the notification thread so that listeners have full access to Grails
- * domain objects. Notifications can be re-attempted if a listener throws RetryableFailureException. 
+ * domain objects. Notifications can be re-attempted if a listener throws RetryableFailureException.
  */
 class GrailsApplicationEventMulticaster extends AbstractApplicationEventMulticaster implements InitializingBean, DisposableBean {
 
@@ -139,5 +141,4 @@ class GrailsApplicationEventMulticaster extends AbstractApplicationEventMulticas
 			assert executor.awaitTermination(timeout, unit), "Forced shutdown of executor incomplete after $timeout $unit."
 		}
 	}
-
 }

@@ -16,22 +16,17 @@
 
 package grails.plugin.springevents;
 
-import java.util.Arrays;
-
-import org.springframework.aop.SpringProxy;
 import org.springframework.aop.TargetClassAware;
 import org.springframework.aop.TargetSource;
-import org.springframework.aop.support.AopUtils;
+import org.springframework.aop.framework.Advised;
 import org.springframework.aop.target.SingletonTargetSource;
 import org.springframework.util.Assert;
-import org.springframework.aop.framework.Advised;
 
 public abstract class ProxyUtils {
 
 	public static Object ultimateTarget(Object candidate) {
 		Assert.notNull(candidate, "Candidate object must not be null");
 		Object current = candidate;
-		Class<?> result = null;
 		while (current instanceof TargetClassAware) {
 			Object nested = null;
 			if (current instanceof Advised) {
@@ -44,5 +39,4 @@ public abstract class ProxyUtils {
 		}
 		return current;
 	}
-
 }

@@ -15,48 +15,51 @@
  */
 package grails.plugin.springevents
 
+import static org.codehaus.groovy.grails.plugin.springevents.test.AsynchronousAssertions.waitFor
+
 import java.util.concurrent.CountDownLatch
+
+import org.codehaus.groovy.grails.plugin.springevents.test.*
 import org.junit.After
 import org.junit.Test
-import org.springframework.context.ApplicationListener
-import org.codehaus.groovy.grails.plugin.springevents.test.*
-import static org.codehaus.groovy.grails.plugin.springevents.test.AsynchronousAssertions.waitFor
 import org.springframework.context.ApplicationEvent
+import org.springframework.context.ApplicationListener
 
 class PublishEventDynamicMethodTests {
 
-	def applicationEventMulticaster
+	def asyncApplicationEventMulticaster
+
+	private insertLatch = new CountDownLatch(1)
+	private updateLatch = new CountDownLatch(1)
+	private deleteLatch = new CountDownLatch(1)
+	private listener = { ApplicationEvent event ->
+		switch (event) {
+			case InsertEvent:
+				insertLatch.countDown()
+				break
+			case UpdateEvent:
+				updateLatch.countDown()
+				break
+			case DeleteEvent:
+				deleteLatch.countDown()
+				break
+		}
+	} as ApplicationListener
 
 	@After
 	void tearDownListeners() {
-		applicationEventMulticaster.removeAllListeners()
+		asyncApplicationEventMulticaster.removeApplicationListener listener
 	}
 
 	@Test
 	void domainClassesCanPublishEvents() {
-		def insertLatch = new CountDownLatch(1)
-		def updateLatch = new CountDownLatch(1)
-		def deleteLatch = new CountDownLatch(1)
-		def listener = { ApplicationEvent event ->
-			switch (event) {
-				case InsertEvent:
-					insertLatch.countDown()
-					break
-				case UpdateEvent:
-					updateLatch.countDown()
-					break
-				case DeleteEvent:
-					deleteLatch.countDown()
-					break
-			}
-		} as ApplicationListener
-		applicationEventMulticaster.addApplicationListener listener
+		asyncApplicationEventMulticaster.addApplicationListener listener
 
 		def album = new Album(artist: "Yeasayer", name: "Odd Blood").save(flush: true, failOnError: true)
 
 		waitFor "Insert event", insertLatch
 
-		album.tracks << new Song(name: "Ambling Alp")
+		album.addToTracks new Song(name: "Ambling Alp")
 		album.save(flush: true, failOnError: true)
 
 		waitFor "Update event", updateLatch

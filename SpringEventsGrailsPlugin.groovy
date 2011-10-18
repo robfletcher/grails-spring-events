@@ -13,11 +13,14 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+import grails.plugin.springevents.AsyncEventPublisher
 import grails.plugin.springevents.GrailsApplicationEventMulticaster
-import org.springframework.context.ApplicationEvent
-import org.springframework.context.ApplicationListener
 import grails.plugin.springevents.ProxyUtils
-import org.codehaus.groovy.grails.plugins.PluginManagerHolder
+
+import org.springframework.context.ApplicationContext
+import org.springframework.context.ApplicationEvent
+import org.springframework.context.ApplicationEventPublisher
+import org.springframework.context.ApplicationListener
 
 class SpringEventsGrailsPlugin {
 
@@ -30,40 +33,45 @@ class SpringEventsGrailsPlugin {
 			"src/templates/**/*",
 			"**/org/codehaus/groovy/grails/plugin/springevents/test/**/*",
 			"**/grails/plugin/springevents/test/**/*",
-			"grails-app/views/error.gsp",
 			"web-app/**/*"
 	]
 
 	def author = "Rob Fletcher"
 	def authorEmail = "rob@energizedwork.com"
 	def title = "Grails Spring Events Plugin"
-	def description = '''\\
-Provides asynchronous Spring application event processing for Grails applications
-'''
+	def description = 'Provides asynchronous Spring application event processing for Grails applications'
 
-	// URL to the plugin's documentation
 	def documentation = "http://grails.org/plugin/spring-events"
 
 	def doWithSpring = {
-		applicationEventMulticaster(GrailsApplicationEventMulticaster) {
+		asyncApplicationEventMulticaster(GrailsApplicationEventMulticaster) {
 			sessionFactory = ref("sessionFactory")
+		}
+		asyncEventPublisher(AsyncEventPublisher) { bean ->
+			bean.initMethod = 'refresh'
+			asyncApplicationEventMulticaster = ref('asyncApplicationEventMulticaster')
 		}
 	}
 
-	def doWithApplicationContext = { ctx ->
+	def doWithApplicationContext = { ApplicationContext ctx ->
+
+		def listenerBeanNames = ctx.getBeanNamesForType(ApplicationListener) as Set
 		/*
 			Because transactional beans are behind a factory and are lazy, they do not
 			get found in time to be automatically registered. To force the issue, we hand
 			register ALL service beans to ensure there is no weirdness. There is no harm
 			in hand registering a listener that would be found anyway.
-			
+
 			See: http://jira.codehaus.org/browse/GRAILSPLUGINS-2552
 		*/
 		def multicaster = ctx.getBean('applicationEventMulticaster')
+		def asyncMulticaster = ctx.getBean('asyncApplicationEventMulticaster')
 		application.serviceClasses.each {
 			if (ApplicationListener.isAssignableFrom(it.clazz)) {
 				log.debug "pre-registering service $it.name"
 				multicaster.addApplicationListenerBean(it.propertyName)
+				asyncMulticaster.addApplicationListenerBean(it.propertyName)
+				listenerBeanNames.remove it.propertyName
 			}
 		}
 
@@ -71,37 +79,42 @@ Provides asynchronous Spring application event processing for Grails application
 			Beans with transactional proxies end up getting registered twice, due to a
 			bug in AbstractApplicationEventMulticaster. To counter, we manually go and remove
 			the non proxy bean from the multicaster.
-			
+
 			See: http://jira.codehaus.org/browse/GRAILSPLUGINS-2317
 		*/
-		def servicesPlugin = PluginManagerHolder.pluginManager.getGrailsPlugin("services").instance
+		def servicesPlugin = manager.getGrailsPlugin("services").instance
 		application.serviceClasses.each {
 			if (ApplicationListener.isAssignableFrom(it.clazz) && servicesPlugin.shouldCreateTransactionalProxy(it)) {
 				def proxy = ctx.getBean(it.propertyName)
 				multicaster.removeApplicationListener(ProxyUtils.ultimateTarget(proxy))
 			}
 		}
-		
+
+		// 'copy' the listeners to the async multicaster that weren't already added
+		for (String name in listenerBeanNames) {
+			asyncMulticaster.addApplicationListenerBean(name)
+		}
 	}
-	
+
 	def doWithDynamicMethods = {
 		[application.controllerClasses, application.serviceClasses, application.domainClasses].flatten().each {
 			addPublishEvent(it, application.mainContext)
 		}
 	}
-	
+
 	def onChange = { event ->
-		if (application.isControllerClass(event.source) || 
+		if (application.isControllerClass(event.source) ||
 			application.isServiceClass(event.source) ||
 			application.isDomainClass(event.source)
 		) {
 			addPublishEvent(event.source, application.mainContext)
 		}
 	}
-	
+
 	def addPublishEvent(subject, ctx) {
+		ApplicationEventPublisher asyncEventPublisher = ctx.asyncEventPublisher
 		subject.metaClass.publishEvent = { ApplicationEvent event ->
-			ctx.publishEvent(event)
+			asyncEventPublisher.publishEvent(event)
 		}
 	}
 }

@@ -15,27 +15,27 @@
  */
 package grails.plugin.springevents
 
-import org.codehaus.groovy.grails.plugins.PluginManagerHolder
 import grails.plugin.springevents.test.*
+
 import org.codehaus.groovy.grails.plugin.springevents.test.*
 
 class ReloadTests extends GroovyTestCase {
 
 	def grailsApplication
-	
+	def pluginManager
+
 	void testReload() {
 		def classNames = [TestController, TestListenerService]*.name
-		
+
 		classNames.each {
 			def clazz = grailsApplication.classLoader.loadClass(it)
 			assertNotNull("publishEvent for $it", clazz.metaClass.getMetaMethod("publishEvent"))
 		}
-		
+
 		classNames.each {
 			def clazz = grailsApplication.classLoader.reloadClass(it)
-			PluginManagerHolder.pluginManager.informOfClassChange(clazz)
+			pluginManager.informOfClassChange(clazz)
 			assertNotNull("publishEvent for $it", clazz.metaClass.getMetaMethod("publishEvent"))
 		}
 	}
-
 }

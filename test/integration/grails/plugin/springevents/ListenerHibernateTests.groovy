@@ -15,26 +15,28 @@
  */
 package grails.plugin.springevents
 
+import static java.util.concurrent.TimeUnit.MILLISECONDS
+import static org.hamcrest.CoreMatchers.notNullValue
+import static org.junit.Assert.assertThat
+import static org.junit.Assert.fail
+import static org.junit.matchers.JUnitMatchers.hasItems
+
 import java.util.concurrent.CountDownLatch
+import java.util.concurrent.TimeUnit
+
 import org.codehaus.groovy.grails.plugin.springevents.test.Album
 import org.codehaus.groovy.grails.plugin.springevents.test.DummyEvent
 import org.codehaus.groovy.grails.plugin.springevents.test.ExceptionTrap
 import org.codehaus.groovy.grails.plugin.springevents.test.Song
+import org.junit.*
 import org.springframework.context.ApplicationEvent
 import org.springframework.context.ApplicationListener
-import static java.util.concurrent.TimeUnit.MILLISECONDS
-import static org.hamcrest.CoreMatchers.notNullValue
-import org.junit.*
-import static org.junit.Assert.assertThat
-import static org.junit.Assert.fail
-import static org.junit.matchers.JUnitMatchers.hasItems
-import java.util.concurrent.TimeUnit
 
 class ListenerHibernateTests {
 
 	static transactional = false
 
-	def applicationEventMulticaster
+	def asyncApplicationEventMulticaster
 	ExceptionTrap exceptionTrap = new ExceptionTrap()
 	ClosureListener listener
 
@@ -43,7 +45,7 @@ class ListenerHibernateTests {
 		Album.withNewSession {
 			def album = new Album(artist: "The Hold Steady", name: "Heaven Is Whenever")
 			["The Sweet Part of the City", "Soft In the Center", "The Weekenders", "The Smidge", "Rock Problems", "We Can Get Together", "Hurricane J", "Barely Breathing", "Our Whole Lives"].each {
-				album.tracks << new Song(name: it)
+				album.addToTracks new Song(name: it)
 			}
 			album.save(flush: true, failOnError: true)
 		}
@@ -60,17 +62,17 @@ class ListenerHibernateTests {
 	@Before
 	void setUpListener() {
 		listener = new ClosureListener()
-		applicationEventMulticaster.addApplicationListener(listener)
+		asyncApplicationEventMulticaster.addApplicationListener(listener)
 	}
 
 	@Before
 	void setUpExceptionTrap() {
-		applicationEventMulticaster.errorHandler = exceptionTrap
+		asyncApplicationEventMulticaster.errorHandler = exceptionTrap
 	}
 
 	@After
 	void removeAllListeners() {
-		applicationEventMulticaster.removeApplicationListener(listener)
+		asyncApplicationEventMulticaster.removeApplicationListener(listener)
 	}
 
 	@Test
@@ -80,7 +82,7 @@ class ListenerHibernateTests {
 			domainObjectInstance = Album.findByArtist("The Hold Steady")
 		}
 
-		applicationEventMulticaster.multicastEvent(new DummyEvent())
+		asyncApplicationEventMulticaster.multicastEvent(new DummyEvent())
 
 		waitForListenerToComplete()
 		assertThat "domain object", domainObjectInstance, notNullValue()
@@ -98,7 +100,7 @@ class ListenerHibernateTests {
 
 		def domainObjectInstance = Album.findByArtist("The Hold Steady")
 		domainObjectInstance.discard()
-		applicationEventMulticaster.multicastEvent(new DomainEvent(domainObjectInstance: domainObjectInstance))
+		asyncApplicationEventMulticaster.multicastEvent(new DomainEvent(domainObjectInstance: domainObjectInstance))
 
 		waitForListenerToComplete()
 		assertThat "domain object", domainObjectInstance, notNullValue()
@@ -112,7 +114,7 @@ class ListenerHibernateTests {
 			songNames = domainObjectInstance.tracks.name
 		}
 
-		applicationEventMulticaster.multicastEvent(new DummyEvent())
+		asyncApplicationEventMulticaster.multicastEvent(new DummyEvent())
 
 		waitForListenerToComplete()
 		assertThat "lazy loaded domain association", songNames, hasItems("The Sweet Part of the City", "Soft In the Center", "The Weekenders")
