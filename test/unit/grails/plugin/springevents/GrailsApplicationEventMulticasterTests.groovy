@@ -26,6 +26,7 @@ import static org.hamcrest.CoreMatchers.*
 import org.junit.*
 import static org.junit.Assert.*
 import org.springframework.context.*
+import static grails.plugin.springevents.DispatchMode.SYNCHRONOUS
 
 class GrailsApplicationEventMulticasterTests {
 
@@ -170,6 +171,20 @@ class GrailsApplicationEventMulticasterTests {
 		assertThat "Exception passed to error handler", errorHandler.handledError, instanceOf(NoRetryPolicyDefinedException)
 	}
 
+	@Test
+	// @Issue("http://jira.grails.org/browse/GPSPRINGEVENTS-6")
+	void dispatchesSynchronouslyIfAsynchronousFlagIsFalse() {
+		def latch = new CountDownLatch(1)
+		def listener = new ThreadRecordingListener(latch)
+		multicaster.addApplicationListener listener
+
+		multicaster.dispatchMode = SYNCHRONOUS
+		multicaster.multicastEvent(event)
+
+		assert latch.count == 0
+		assert listener.thread == Thread.currentThread()
+	}
+
 	@BeforeClass
 	static void enableLogging() {
 		mockLogging GrailsApplicationEventMulticaster, true
@@ -251,7 +266,7 @@ class FailingListener extends CountingListener {
 
 	void onApplicationEvent(ApplicationEvent e) {
 		super.onApplicationEvent(e)
-		if(shouldFail()) {
+		if (shouldFail()) {
 			throw exception
 		}
 	}

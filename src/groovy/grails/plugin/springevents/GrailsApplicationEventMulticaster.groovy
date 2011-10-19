@@ -25,6 +25,7 @@ import org.codehaus.groovy.grails.plugin.springevents.*
 import org.slf4j.*
 import org.springframework.beans.factory.*
 import org.springframework.context.*
+import static grails.plugin.springevents.DispatchMode.ASYNCHRONOUS
 
 /**
  * An ApplicationEventMulticaster implementation that uses an ExecutorService to asynchronously notify listeners. The
@@ -37,6 +38,7 @@ class GrailsApplicationEventMulticaster extends AbstractApplicationEventMulticas
 	ScheduledExecutorService retryScheduler
 	ErrorHandler errorHandler
 	def persistenceInterceptor
+	DispatchMode dispatchMode
 
 	private final Logger log = LoggerFactory.getLogger(GrailsApplicationEventMulticaster)
 
@@ -49,10 +51,14 @@ class GrailsApplicationEventMulticaster extends AbstractApplicationEventMulticas
 	void multicastEvent(ApplicationEvent event) {
 		getApplicationListeners(event).each { ApplicationListener listener ->
 			def notification = new ApplicationEventNotification(listener, event)
-			taskExecutor.execute {
-				withPersistenceSession {
-					notifyListener notification
+			if (dispatchMode == ASYNCHRONOUS) {
+				taskExecutor.execute {
+					withPersistenceSession {
+						notifyListener notification
+					}
 				}
+			} else {
+				notifyListener notification
 			}
 		}
 	}
@@ -98,6 +104,7 @@ class GrailsApplicationEventMulticaster extends AbstractApplicationEventMulticas
 		if (!taskExecutor) taskExecutor = Executors.newSingleThreadExecutor()
 		if (!retryScheduler) retryScheduler = Executors.newSingleThreadScheduledExecutor()
 		if (!errorHandler) errorHandler = TaskUtils.LOG_AND_SUPPRESS_ERROR_HANDLER
+		if (!dispatchMode) dispatchMode = ASYNCHRONOUS
 	}
 
 	void destroy() {
