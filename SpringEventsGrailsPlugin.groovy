@@ -20,7 +20,7 @@ import org.springframework.context.*
 class SpringEventsGrailsPlugin {
 
 	def version = "1.2-SNAPSHOT"
-	def grailsVersion = "2.0.0 > *"
+	def grailsVersion = "1.2.0 > *"
 	def dependsOn = [:]
 	def observe = ["controllers", "services"]
 	def pluginExcludes = [
