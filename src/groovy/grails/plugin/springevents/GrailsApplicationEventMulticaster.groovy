@@ -17,15 +17,15 @@
 package grails.plugin.springevents
 
 import org.springframework.context.event.AbstractApplicationEventMulticaster
-import org.springframework.scheduling.support.TaskUtils
 import org.springframework.util.ErrorHandler
+import static grails.plugin.springevents.DispatchMode.ASYNCHRONOUS
 import java.util.concurrent.*
 import static java.util.concurrent.TimeUnit.*
 import org.codehaus.groovy.grails.plugin.springevents.*
 import org.slf4j.*
 import org.springframework.beans.factory.*
 import org.springframework.context.*
-import static grails.plugin.springevents.DispatchMode.ASYNCHRONOUS
+import static org.springframework.scheduling.support.TaskUtils.LOG_AND_SUPPRESS_ERROR_HANDLER
 
 /**
  * An ApplicationEventMulticaster implementation that uses an ExecutorService to asynchronously notify listeners. The
@@ -36,9 +36,9 @@ class GrailsApplicationEventMulticaster extends AbstractApplicationEventMulticas
 
 	ExecutorService taskExecutor
 	ScheduledExecutorService retryScheduler
-	ErrorHandler errorHandler
 	def persistenceInterceptor
 	DispatchMode dispatchMode
+	private ErrorHandler errorHandler
 
 	private final Logger log = LoggerFactory.getLogger(GrailsApplicationEventMulticaster)
 
@@ -61,6 +61,10 @@ class GrailsApplicationEventMulticaster extends AbstractApplicationEventMulticas
 				notifyListener notification
 			}
 		}
+	}
+
+	void setErrorHandler(ErrorHandler errorHandler) {
+		this.errorHandler = StackFilteringErrorHandler.decorate(errorHandler)
 	}
 
 	protected void notifyListener(ApplicationEventNotification notification) {
@@ -103,7 +107,7 @@ class GrailsApplicationEventMulticaster extends AbstractApplicationEventMulticas
 	void afterPropertiesSet() {
 		if (!taskExecutor) taskExecutor = Executors.newSingleThreadExecutor()
 		if (!retryScheduler) retryScheduler = Executors.newSingleThreadScheduledExecutor()
-		if (!errorHandler) errorHandler = TaskUtils.LOG_AND_SUPPRESS_ERROR_HANDLER
+		if (!errorHandler) setErrorHandler(LOG_AND_SUPPRESS_ERROR_HANDLER)
 		if (!dispatchMode) dispatchMode = ASYNCHRONOUS
 	}
 
