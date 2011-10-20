@@ -88,10 +88,6 @@ If a listener throws an exception from its `onApplicationEvent` method (or its r
 
 The multicaster uses a [ExecutorService][3] to poll the queue and notify the target listener. By default the service uses a [single thread][4] but you can use an alternate `ExecutorService` implementation by overriding the service's `taskExecutor` property in `Config.groovy`.
 
-### Sending notifications synchronously
-
-Particularly for testing it can be easier to send notifications synchronously rather than via the _ExecutorService_. If you need to do this just set the multicaster's `dispatchMode` property to `grails.plugin.springevents.DispatchMode.SYNCHRONOUS`.
-
 Similarly the service uses a [ScheduledExecutorService][5] to re-queue failed notifications after the delay specified by the listener's retry policy. The default implementation uses a [single thread][6] which can be overridden by setting the property `retryScheduler` in `Config.groovy`.
 
 #### _Example_: Overriding the dependencies of the multicaster in `Config.groovy`:
@@ -104,6 +100,10 @@ Similarly the service uses a [ScheduledExecutorService][5] to re-queue failed no
 		}
 	}
 	
+### Sending notifications synchronously
+
+Particularly for testing it can be easier to send notifications synchronously rather than via the _ExecutorService_. If you need to do this just set the multicaster's `dispatchMode` property to `grails.plugin.springevents.DispatchMode.SYNCHRONOUS`.
+
 [1]: http://grails.org/doc/latest/guide/14.%20Grails%20and%20Spring.html#14.6%20Property%20Override%20Configuration
 [2]: http://static.springsource.org/spring/docs/3.0.x/javadoc-api/org/springframework/util/ErrorHandler.html "org.springframework.util.ErrorHandler"
 [3]: http://java.sun.com/javase/6/docs/api/java/util/concurrent/ExecutorService.html "java.util.concurrent.ExecutorService"
