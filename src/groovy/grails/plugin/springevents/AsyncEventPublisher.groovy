@@ -16,36 +16,23 @@
 
 package grails.plugin.springevents
 
-import java.lang.reflect.Field
 import org.springframework.beans.factory.InitializingBean
 import org.springframework.context.event.ApplicationEventMulticaster
-import org.springframework.context.support.GenericApplicationContext
-import org.springframework.util.*
+import org.springframework.util.Assert
+import org.springframework.context.*
 
 /**
  * Event publisher used by GrailsApplicationEventMulticaster to multicast events asynchronously.
  *
  * @author Burt Beckwith
  */
-class AsyncEventPublisher extends GenericApplicationContext implements InitializingBean {
+class AsyncEventPublisher implements ApplicationEventPublisher, InitializingBean {
 
-	private ApplicationEventMulticaster eventMulticaster
+	ApplicationEventMulticaster eventMulticaster
 
 	@Override
-	protected void initApplicationEventMulticaster() {
-		// the default behavior is to lookup the multicaster by bean name, but we need a specific one;
-		// unfortunately the field is private
-		Field field = ReflectionUtils.findField(getClass(), 'applicationEventMulticaster', ApplicationEventMulticaster)
-		ReflectionUtils.makeAccessible field
-		ReflectionUtils.setField field, this, eventMulticaster
-	}
-
-	/**
-	 * Dependency injection for the async multicaster bean.
-	 * @param multicaster the multicaster
-	 */
-	void setAsyncApplicationEventMulticaster(ApplicationEventMulticaster multicaster) {
-		eventMulticaster = multicaster
+	void publishEvent(ApplicationEvent applicationEvent) {
+		eventMulticaster.multicastEvent(applicationEvent)
 	}
 
 	void afterPropertiesSet() {

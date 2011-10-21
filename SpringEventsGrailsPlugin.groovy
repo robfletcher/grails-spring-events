@@ -42,9 +42,8 @@ class SpringEventsGrailsPlugin {
 		asyncApplicationEventMulticaster(GrailsApplicationEventMulticaster) {
 			persistenceInterceptor = ref("persistenceInterceptor")
 		}
-		asyncEventPublisher(AsyncEventPublisher) { bean ->
-			bean.initMethod = 'refresh'
-			asyncApplicationEventMulticaster = ref('asyncApplicationEventMulticaster')
+		asyncEventPublisher(AsyncEventPublisher) {
+			eventMulticaster = ref('asyncApplicationEventMulticaster')
 		}
 	}
 
