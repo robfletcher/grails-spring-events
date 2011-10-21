@@ -49,7 +49,10 @@ class SpringEventsGrailsPlugin {
 
 	def doWithApplicationContext = { ApplicationContext ctx ->
 
-		def listenerBeanNames = ctx.getBeanNamesForType(ApplicationListener) as Set
+		// assigning the bean names directly to a set throws an exception the first time after a `grails clean`!!
+		def listenerBeanNames = [] as Set
+		listenerBeanNames.addAll ctx.getBeanNamesForType(ApplicationListener)
+
 		/*
 			Because transactional beans are behind a factory and are lazy, they do not
 			get found in time to be automatically registered. To force the issue, we hand
