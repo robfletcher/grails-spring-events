@@ -21,9 +21,14 @@ grails.project.dependency.resolution = {
 		build(":release:1.0.0.RC3") {
 			export = false
 		}
+		build(":svn:1.0.0.M1") {
+			export = false
+		}
 		compile(":hibernate:$grailsVersion") {
 			export = false
 		}
-		test ":spock:0.6-SNAPSHOT"
+		test(":spock:0.6-SNAPSHOT") {
+			export = false
+		}
 	}
 }
