@@ -2,30 +2,33 @@
 
 The _Grails Spring Events_ plugin provides a lightweight mechanism for asynchronously publishing _Spring_ application events.
 
-The plugin overrides the default [ApplicationEventMulticaster][7] with one that processes events asynchronously and is capable of retrying certain types of notification failure. 
+The plugin adds a new [ApplicationEventMulticaster][7] to the Spring application context that processes events asynchronously and is capable of retrying certain types of notification failure.
 
 ## Publishing events
 
-To publish an event you simply need to call the `publishEvent` method on any _Spring_ registered [ApplicationEventPublisher][8] implementation. The `ApplicationContext` is the most obvious candidate, although you could also have a service implement the `ApplicationEventPublisher` interface and use that.
+_Spring Events_ adds a bean called `asyncEventPublisher` to the Spring context. You can inject it into Grails artefacts in the same way as any other bean dependency. To publish an event you just call the `publishEvent` method.
 
-To make things even easier the plugin adds a `publishEvent` method to every domain class, controller and service in the application.
+To make things even easier the plugin adds a `publishEvent` dynamic method to every domain class, controller and service in the application.
 
-#### _Example_: Firing an event when a domain class is updated:
+#### _Example_: Firing an event when a domain class is updated
 
-	class Pirate {
-		String name
-		
-		void afterUpdate() {
-			def event = new PirateUpdateEvent(this)
-			publishEvent(event)
-		}
-	}
+```groovy
+class Pirate {
 	
-	class PirateUpdateEvent extends ApplicationEvent {
-		PirateUpdateEvent(Pirate source) {
-			super(source)
-		}
+	String name
+	
+	void afterUpdate() {
+		def event = new PirateUpdateEvent(this)
+		publishEvent event
 	}
+}
+
+class PirateUpdateEvent extends ApplicationEvent {
+	PirateUpdateEvent(Pirate source) {
+		super(source)
+	}
+}
+```
 
 ## Defining Listeners
 
@@ -37,17 +40,21 @@ The `ApplicationListener` interface has a generic type parameter that you can us
 
 #### _Example_: Using generics to filter the event type in a listener
 
-	class PirateUpdateResponderService implements ApplicationListener<PirateUpdateEvent> {
-		void onApplicationEvent(PirateUpdateEvent event) {
-			log.info "Yarrr! The dread pirate $event.source.name has been updated!"
-		}
+```groovy
+class PirateUpdateResponderService implements ApplicationListener<PirateUpdateEvent> {
+	
+	void onApplicationEvent(PirateUpdateEvent event) {
+		log.info "Yarrr! The dread pirate $event.source.name has been updated!"
 	}
+	
+}
+```
 
 ## Retrying failed notifications
 
 Listener implementations may declare a `retryPolicy` property of type `grails.plugin.springevents.RetryPolicy` (or declare a `getRetryPolicy()` method). If such a property is present and the listener throws `grails.plugin.springevents.RetryableFailureException` from the `onApplicationEvent` method it will be re-notified at some time in the future according to the `retryPolicy` value. Throwing any other exception type will _not_ result in notification being retried.
 
-Note: A `RetryableFailureException` thrown by a listener implementation is treated just like any other exception if the listener does not declare a `retryPolicy`.
+> Note: A `RetryableFailureException` thrown by a listener implementation is treated just like any other exception if the listener does not declare a `retryPolicy`.
 
 The `RetryPolicy` class simply defines the rules governing how and when to re-notify the listener of any events it fails to handle. It defines the following properties:
 
@@ -57,23 +64,22 @@ The `RetryPolicy` class simply defines the rules governing how and when to re-no
 
 #### _Example_: A listener that calls an unreliable external service:
 
-	class UnreliableListener implements ApplicationListener {
-		
-		def unreliableService
-		final RetryPolicy retryPolicy = new RetryPolicy()
-		
-		void onApplicationEvent(ApplicationEvent event) {
-			boolean success = true
-			if (event instanceof AnInterestingEvent) {
-				if (unreliableService.isAvailable()) {
-					unreliableService.doSomething()
-				} else {
-					throw new RetryableFailureException("the unreliable service is currently unavailable")
-				}
-			}
+```groovy
+class UnreliableListener implements ApplicationListener {
+	
+	def unreliableService
+	final RetryPolicy retryPolicy = new RetryPolicy()
+	
+	void onApplicationEvent(ApplicationEvent event) {
+		if (unreliableService.isAvailable()) {
+			unreliableService.doSomething()
+		} else {
+			throw new RetryableFailureException("the unreliable service is currently unavailable")
 		}
 	}
-	
+}
+```
+
 In this example the listener throws `RetryableFailureException` to indicate that the external service it attempts to call is not currently available and notification should be attempted later.
 
 ## Customising the multicaster
@@ -102,7 +108,7 @@ Similarly the service uses a [ScheduledExecutorService][5] to re-queue failed no
 	
 ### Sending notifications synchronously
 
-Particularly for testing it can be easier to send notifications synchronously rather than via the _ExecutorService_. If you need to do this just set the multicaster's `dispatchMode` property to `grails.plugin.springevents.DispatchMode.SYNCHRONOUS`.
+Sometimes you might need to send notifications synchronously rather than via the _ExecutorService_. For example, it can make testing more straightforward. If you need to do this just set the multicaster's `dispatchMode` property to `grails.plugin.springevents.DispatchMode.SYNCHRONOUS`.
 
 [1]: http://grails.org/doc/latest/guide/14.%20Grails%20and%20Spring.html#14.6%20Property%20Override%20Configuration
 [2]: http://static.springsource.org/spring/docs/3.0.x/javadoc-api/org/springframework/util/ErrorHandler.html "org.springframework.util.ErrorHandler"
