@@ -6,7 +6,7 @@ The plugin adds a new [ApplicationEventMulticaster][7] to the Spring application
 
 ## Publishing events
 
-_Spring Events_ adds a bean called `asyncEventPublisher` to the Spring context. You can inject it into Grails artefacts in the same way as any other bean dependency. To publish an event you just call the `publishEvent` method.
+_Spring Events_ adds a bean called `asyncEventPublisher` to the Spring context. You can inject it into Grails artefacts and other Spring beans in the same way as any other bean dependency. To publish an event you just call the `publishEvent` method.
 
 To make things even easier the plugin adds a `publishEvent` dynamic method to every domain class, controller and service in the application.
 
